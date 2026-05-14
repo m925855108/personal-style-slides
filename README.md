@@ -30,22 +30,57 @@ Do not install the repository root as the skill. Install only the `personal-styl
 ### Typical Use
 
 1. Put an approved local template, old deck, or screenshot folder under `personal-style-slides/assets/templates/`, or provide the file path in conversation.
-2. Ask Codex to use `$personal-style-slides`.
+2. Ask your agent to use the installed `personal-style-slides` skill. For example: "Use the personal-style-slides skill to create this deck based on this template."
 3. The skill treats the provided template/deck/screenshot as the style seed.
 4. It generates or modifies a personalized HTML slide deck, with stronger source-traceability safeguards for research tasks.
 5. Reusable feedback is written to style memory only with user approval.
 
-### Optional Local Checks
+### Quick Start
 
-The scripts are standard-library first and degrade gracefully. Optional dependencies improve extraction and verification:
+Optional dependencies improve PDF/PPTX extraction and browser verification:
 
 ```bash
-pip install PyMuPDF pypdf playwright
+pip install -r requirements.txt
 python -m playwright install chromium
+```
+
+Check the local environment:
+
+```bash
 python personal-style-slides/scripts/doctor.py
 ```
 
+Extract a compact style profile from a local template or old deck:
+
+```bash
+python personal-style-slides/scripts/extract_style_profile.py \
+  personal-style-slides/assets/templates/my_template.pptx \
+  --out-dir style_profile_output
+```
+
+After generating a deck, run static checks:
+
+```bash
+python personal-style-slides/scripts/check_html_deck.py outputs/index.html
+```
+
+Run optional browser-render verification:
+
+```bash
+python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
+```
+
 PPTX visual rendering requires LibreOffice for PPTX-to-PDF conversion plus PyMuPDF for PDF-to-PNG page rendering. Without both, PPTX inspection falls back to OOXML metadata only.
+
+### Demo
+
+See `examples_demo/demo_template_seed/` for a synthetic template-seed example. The demo shows the expected local workflow:
+
+```text
+template/old deck -> style_profile.auto.json + style_summary.auto.md -> personalized deck generation
+```
+
+The demo is synthetic and safe to publish. Do not place private templates or unpublished figures in `examples_demo/`.
 
 ### Privacy
 
@@ -99,22 +134,57 @@ personal-style-slides/
 ### 典型用法
 
 1. 将认可的本地模板、旧 deck 或截图文件夹放入 `personal-style-slides/assets/templates/`，也可以在对话中直接提供文件路径。
-2. 在 Codex 中请求使用 `$personal-style-slides`。
+2. 请求模型使用已安装的 `personal-style-slides` skill。例如：“使用 personal-style-slides skill，根据这个模板制作演示文稿。”
 3. skill 会把当前模板、旧 deck 或截图作为风格种子。
 4. skill 会生成或修改个性化 HTML 演示文稿；如果任务是科研场景，会启用更强的来源追溯和科学准确性保护。
 5. 只有在用户明确允许后，skill 才会把可复用的审美反馈写入本地 style memory。
 
-### 可选本地检查
+### 快速开始
 
-脚本优先使用 Python 标准库，并在缺少依赖时降级。可选依赖可以增强 PDF/PPTX 提取和浏览器验证能力：
+可选依赖可以增强 PDF/PPTX 提取和浏览器验证能力：
 
 ```bash
-pip install PyMuPDF pypdf playwright
+pip install -r requirements.txt
 python -m playwright install chromium
+```
+
+检查本地环境：
+
+```bash
 python personal-style-slides/scripts/doctor.py
 ```
 
+从本地模板或旧 deck 提取紧凑风格画像：
+
+```bash
+python personal-style-slides/scripts/extract_style_profile.py \
+  personal-style-slides/assets/templates/my_template.pptx \
+  --out-dir style_profile_output
+```
+
+生成 deck 后运行静态检查：
+
+```bash
+python personal-style-slides/scripts/check_html_deck.py outputs/index.html
+```
+
+运行可选浏览器渲染验证：
+
+```bash
+python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
+```
+
 PPTX 视觉渲染需要 LibreOffice 完成 PPTX 到 PDF 的转换，并需要 PyMuPDF 将 PDF 页面渲染为 PNG。如果缺少这些工具，PPTX 检查会降级为 OOXML 元数据提取。
+
+### Demo
+
+见 `examples_demo/demo_template_seed/`。这是一个合成的模板种子示例，用来展示基本流程：
+
+```text
+模板/旧 deck -> style_profile.auto.json + style_summary.auto.md -> 个性化 deck 生成
+```
+
+demo 是合成材料，可以公开。不要把私人模板或未发表图片放入 `examples_demo/`。
 
 ### 隐私说明
 

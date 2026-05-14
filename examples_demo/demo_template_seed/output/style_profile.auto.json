@@ -1,0 +1,31 @@
+{
+  "profile_kind": "auto_style_profile",
+  "sources": ["demo_template.html"],
+  "canvas": null,
+  "slide_count": 1,
+  "image_count": 0,
+  "visual_density": "sparse",
+  "dominant_colors": ["#12243f", "#2d6cdf", "#62708a", "#d7dfec", "#f6f8fb", "rgba(18, 36, 63, 0.08)"],
+  "font_size_tokens": ["font-size: 15px", "font-size: 24px", "font-size: 25px", "font-size: 42px"],
+  "font_px_values": ["15px", "24px", "25px", "42px"],
+  "css_variables": ["--accent: #2d6cdf", "--bg: #f6f8fb", "--ink: #12243f", "--muted: #62708a", "--rule: #d7dfec"],
+  "layout_archetypes": ["card-modules", "figure-first"],
+  "style_contract": {
+    "imitate": [
+      "canvas ratio and slide shell",
+      "title/footer/page-number placement",
+      "dominant colors and accent usage",
+      "layout archetypes and figure/text rhythm",
+      "figure and caption treatment visible in the seed"
+    ],
+    "adapt": [
+      "slide count",
+      "figure scale",
+      "text density",
+      "multi-figure layouts",
+      "scientific diagrams required by new content"
+    ]
+  },
+  "warnings": [],
+  "demo_note": "Compact expected output for the synthetic template seed. Real local runs may include absolute source paths in raw_inspection."
+}

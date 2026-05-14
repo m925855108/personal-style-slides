@@ -1,15 +1,18 @@
-# Private user materials
+# User private materials
 personal-style-slides/assets/templates/*
 !personal-style-slides/assets/templates/.gitkeep
+!personal-style-slides/assets/templates/README.md
 
 personal-style-slides/assets/examples/*
 !personal-style-slides/assets/examples/.gitkeep
+!personal-style-slides/assets/examples/README.md
 !personal-style-slides/assets/examples/bad_examples/
 personal-style-slides/assets/examples/bad_examples/*
 !personal-style-slides/assets/examples/bad_examples/.gitkeep
 
 personal-style-slides/assets/style_memory/*
 !personal-style-slides/assets/style_memory/.gitkeep
+!personal-style-slides/assets/style_memory/README.md
 
 # Generated outputs
 outputs/
@@ -24,11 +27,20 @@ rendered_pages/
 style_fingerprint.json
 style_similarity_report.json
 
-# Private source documents
+# Private documents and design assets
 *.pptx
 *.docx
 *.pdf
 *.key
+*.pages
+*.ai
+*.psd
+
+# Fonts
+*.ttf
+*.otf
+*.woff
+*.woff2
 
 # Python
 __pycache__/

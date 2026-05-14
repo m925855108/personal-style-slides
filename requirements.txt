@@ -1,0 +1,4 @@
+# Optional dependencies. Scripts are standard-library first and degrade gracefully.
+PyMuPDF>=1.24.0
+pypdf>=4.0.0
+playwright>=1.40.0

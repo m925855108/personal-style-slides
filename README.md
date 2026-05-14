@@ -1,20 +1,44 @@
-# Personal Style Slides / 个性化 HTML 演示 Skill
+# Personal Style Slides
 
-## English
+> Learn from your own slide templates. Generate HTML decks in your personal style.
 
-This repository contains an installable Codex/Claude-style skill:
+Personal Style Slides is an installable Codex/Claude-style skill for personalized HTML slide decks. Instead of applying generic themes, it learns from a PPTX, HTML deck, PDF, old deck, or screenshot you already like. It extracts a compact style seed, generates or revises slides in that style, and updates local style memory only when you approve.
+
+It is optimized for thesis proposals, group meetings, literature reports, simulation/result reports, and academic presentations where both style consistency and source traceability matter. It can also be used for non-research personalized slide work when template fidelity and HTML delivery are the main goals.
+
+## Core Idea
 
 ```text
-personal-style-slides/
+Approved template / old deck / screenshot
+        |
+        v
+Extract compact style seed
+        |
+        v
+Generate personalized HTML slides
+        |
+        v
+Static checks + optional browser verification
+        |
+        v
+User feedback
+        |
+        v
+Update local style memory only with approval
 ```
 
-It is not a universal slide-design system. It is a template-seeded, feedback-refined workflow for creating personalized HTML slide decks. Users provide an approved template, old deck, HTML deck, PPTX, PDF, or screenshot as the style seed. The skill extracts a compact style profile, generates or revises a personalized deck, and can update local style memory only after user approval.
+## Key Features
 
-The skill is optimized for research and academic presentations, but the core ability is broader: preserving a user's established slide aesthetics, rhythm, typography, density, layout habits, and figure treatment.
+- Learns from your own approved PPTX, HTML, PDF, old decks, or screenshots.
+- Preserves slide rhythm, typography, density, layout habits, figure treatment, captions, and footer style.
+- Adds research safeguards for claims, source figures, image provenance, and cautious wording.
+- Generates browser-ready HTML decks with print/PDF support.
+- Includes local helper scripts for source inspection, style extraction, static checks, render verification, and style memory updates.
+- Keeps private templates, unpublished figures, advisor/client comments, fonts, and style memory local.
 
-### Install
+## Install
 
-Copy the installable skill folder into your Codex/Claude skills directory:
+Install only the skill folder:
 
 ```text
 personal-style-slides/
@@ -25,19 +49,33 @@ personal-style-slides/
   scripts/
 ```
 
-Do not install the repository root as the skill. Install only the `personal-style-slides/` subfolder.
+Do not install the repository root as the skill.
 
-### Typical Use
+### Option A: Clone And Copy
 
-1. Put an approved local template, old deck, or screenshot folder under `personal-style-slides/assets/templates/`, or provide the file path in conversation.
-2. Ask your agent to use the installed `personal-style-slides` skill. For example: "Use the personal-style-slides skill to create this deck based on this template."
-3. The skill treats the provided template/deck/screenshot as the style seed.
-4. It generates or modifies a personalized HTML slide deck, with stronger source-traceability safeguards for research tasks.
-5. Reusable feedback is written to style memory only with user approval.
+macOS/Linux:
 
-### Quick Start
+```bash
+git clone https://github.com/m925855108/personal-style-slides.git
+cp -r personal-style-slides/personal-style-slides ~/.codex/skills/
+```
 
-Optional dependencies improve PDF/PPTX extraction and browser verification:
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/m925855108/personal-style-slides.git
+Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.codex\skills\"
+```
+
+Replace `~/.codex/skills/` or `%USERPROFILE%\.codex\skills\` with your actual Codex/Claude skills directory.
+
+### Option B: Download ZIP
+
+Download ZIP from GitHub, unzip it, then copy only the inner `personal-style-slides/` folder into your skills directory.
+
+## Quick Start
+
+Install optional local dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -50,7 +88,13 @@ Check the local environment:
 python personal-style-slides/scripts/doctor.py
 ```
 
-Extract a compact style profile from a local template or old deck:
+Put your approved template or old deck here:
+
+```text
+personal-style-slides/assets/templates/
+```
+
+Extract a compact style seed:
 
 ```bash
 python personal-style-slides/scripts/extract_style_profile.py \
@@ -58,31 +102,69 @@ python personal-style-slides/scripts/extract_style_profile.py \
   --out-dir style_profile_output
 ```
 
-After generating a deck, run static checks:
+After generating a deck, run checks:
 
 ```bash
 python personal-style-slides/scripts/check_html_deck.py outputs/index.html
-```
-
-Run optional browser-render verification:
-
-```bash
 python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
 ```
 
-PPTX visual rendering requires LibreOffice for PPTX-to-PDF conversion plus PyMuPDF for PDF-to-PNG page rendering. Without both, PPTX inspection falls back to OOXML metadata only.
+PPTX visual rendering requires LibreOffice for PPTX-to-PDF conversion and PyMuPDF for PDF-to-PNG rendering. Without both, PPTX inspection falls back to OOXML metadata.
 
-### Demo
-
-See `examples_demo/demo_template_seed/` for a synthetic template-seed example. The demo shows the expected local workflow:
+## Example Prompts
 
 ```text
-template/old deck -> style_profile.auto.json + style_summary.auto.md -> personalized deck generation
+Use the personal-style-slides skill.
+Learn the style from assets/templates/my_template.pptx, then create an 8-minute thesis proposal HTML deck from proposal.docx.
 ```
 
-The demo is synthetic and safe to publish. Do not place private templates or unpublished figures in `examples_demo/`.
+```text
+Use the personal-style-slides skill.
+This old deck is my approved style reference. Revise the new deck to match its layout rhythm, figure/text ratio, caption treatment, and footer style.
+```
 
-### Privacy
+```text
+Use the personal-style-slides skill.
+Generate a group-meeting report from these simulation results, keeping the style close to the template in assets/templates/.
+```
+
+## Demo
+
+See `examples_demo/demo_template_seed/` for a synthetic example:
+
+```text
+input/demo_template.html
+input/research_notes.md
+output/style_profile.auto.json
+output/style_summary.auto.md
+```
+
+The demo shows the intended path:
+
+```text
+template seed -> style summary/profile -> personalized deck generation
+```
+
+The demo contains no private data.
+
+## Repository Structure
+
+```text
+personal-style-slides/          # install this folder as the skill
+  SKILL.md
+  agents/
+  assets/
+  references/
+  scripts/
+
+examples_demo/                  # synthetic public demos
+README.md
+requirements.txt
+THIRD_PARTY_NOTICES.md
+LICENSE
+```
+
+## Privacy
 
 Keep private materials local. Do not commit:
 
@@ -93,115 +175,46 @@ Keep private materials local. Do not commit:
 - personal style memory
 - commercial or system font files
 
-The repository is meant to publish the skill framework, not private user content.
+The repository publishes the skill framework, not private user content.
 
-### Limitations
+## Limitations
 
+- This is a skill package, not a standalone slide application, web app, or CLI product.
 - Style extraction is a compact style seed, not a complete visual reconstruction.
 - Fingerprint comparison is advisory and cannot prove visual similarity.
 - Static HTML checks cannot prove rendered non-overlap.
 - Browser-render verification depends on Playwright or a local browser.
 
----
+## 中文快速说明
 
-## 中文
+> 让 Codex/Claude 学习你认可的模板，按你的审美生成个性化 HTML 演示文稿。
 
-这个仓库包含一个可直接安装的 Codex/Claude 风格 skill：
+这个 skill 不是通用 PPT 美化工具。你提供一个认可的 PPTX、HTML deck、PDF、旧演示文稿或截图，它会提取“风格种子”，并在生成新 slides 时尽量保持你的页面节奏、字体层级、内容密度、图文比例、图注风格和页脚习惯。
 
-```text
-personal-style-slides/
-```
+适合：
 
-它不是通用 PPT 美化工具，而是一个“模板作为风格种子、对话反馈逐步优化”的个性化 HTML 演示文稿工作流。用户提供认可的模板、旧 deck、HTML deck、PPTX、PDF 或截图作为风格种子；skill 会提取紧凑的风格画像，生成或修改个性化演示文稿，并且只在用户批准后把可复用反馈写入本地 style memory。
+- 博士开题、答辩、组会、文献汇报、模拟结果汇报；
+- 已有模板或旧 deck，希望后续 slides 按同一审美生成；
+- 需要 HTML slides、PDF/print 支持、本地检查和可追溯图片/内容来源的场景。
 
-这个 skill 主要为科研和学术演示优化，但核心能力更宽：保留使用者既有的审美、页面节奏、字体层级、内容密度、布局习惯和图片处理方式。
-
-### 安装方式
-
-把下面这个可安装 skill 文件夹复制到 Codex/Claude 的 skills 目录：
+安装时只复制仓库里的内层目录：
 
 ```text
 personal-style-slides/
-  SKILL.md
-  agents/
-  assets/
-  references/
-  scripts/
 ```
 
-不要把整个仓库根目录作为 skill 安装。应该只安装 `personal-style-slides/` 这个子目录。
+不要把整个仓库根目录作为 skill 安装。
 
-### 典型用法
-
-1. 将认可的本地模板、旧 deck 或截图文件夹放入 `personal-style-slides/assets/templates/`，也可以在对话中直接提供文件路径。
-2. 请求模型使用已安装的 `personal-style-slides` skill。例如：“使用 personal-style-slides skill，根据这个模板制作演示文稿。”
-3. skill 会把当前模板、旧 deck 或截图作为风格种子。
-4. skill 会生成或修改个性化 HTML 演示文稿；如果任务是科研场景，会启用更强的来源追溯和科学准确性保护。
-5. 只有在用户明确允许后，skill 才会把可复用的审美反馈写入本地 style memory。
-
-### 快速开始
-
-可选依赖可以增强 PDF/PPTX 提取和浏览器验证能力：
-
-```bash
-pip install -r requirements.txt
-python -m playwright install chromium
-```
-
-检查本地环境：
-
-```bash
-python personal-style-slides/scripts/doctor.py
-```
-
-从本地模板或旧 deck 提取紧凑风格画像：
-
-```bash
-python personal-style-slides/scripts/extract_style_profile.py \
-  personal-style-slides/assets/templates/my_template.pptx \
-  --out-dir style_profile_output
-```
-
-生成 deck 后运行静态检查：
-
-```bash
-python personal-style-slides/scripts/check_html_deck.py outputs/index.html
-```
-
-运行可选浏览器渲染验证：
-
-```bash
-python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
-```
-
-PPTX 视觉渲染需要 LibreOffice 完成 PPTX 到 PDF 的转换，并需要 PyMuPDF 将 PDF 页面渲染为 PNG。如果缺少这些工具，PPTX 检查会降级为 OOXML 元数据提取。
-
-### Demo
-
-见 `examples_demo/demo_template_seed/`。这是一个合成的模板种子示例，用来展示基本流程：
+示例提示词：
 
 ```text
-模板/旧 deck -> style_profile.auto.json + style_summary.auto.md -> 个性化 deck 生成
+请使用 personal-style-slides skill。
+以 assets/templates/my_template.pptx 作为风格模板，根据 proposal.docx 生成一份 8 分钟博士开题报告 HTML 演示文稿。
 ```
 
-demo 是合成材料，可以公开。不要把私人模板或未发表图片放入 `examples_demo/`。
+```text
+请使用 personal-style-slides skill。
+这个旧 deck 是我认可的风格，请把新内容改成类似的版式节奏、图文比例和图注风格。
+```
 
-### 隐私说明
-
-请把私人材料留在本地，不要提交到公开仓库，包括：
-
-- 真实模板或旧演示文稿
-- 未发表结果图或保密项目图片
-- 机构 logo
-- 导师或客户批注
-- 个人 style memory
-- 商业字体或系统字体文件
-
-这个仓库用于发布 skill 框架，而不是发布个人内容。
-
-### 局限
-
-- 风格提取只是紧凑的风格种子，不是完整视觉重建。
-- 风格指纹比较只是辅助提示，不能证明视觉相似。
-- 静态 HTML 检查不能证明浏览器渲染后没有重叠。
-- 浏览器渲染验证依赖 Playwright 或本地浏览器。
+隐私原则：真实模板、未发表图片、机构 logo、导师批注、个人 style memory、商业字体和系统字体都应保留在本地，不要提交到公开仓库。

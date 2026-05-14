@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Style Slides"
+  short_description: "Create template-seeded personal HTML slide decks."
+  default_prompt: "Use $personal-style-slides to learn style from my approved template, old deck, or screenshot, generate a personalized HTML slide deck, and summarize reusable feedback for style memory only with approval."

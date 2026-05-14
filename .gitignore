@@ -1,0 +1,35 @@
+# Private user materials
+personal-style-slides/assets/templates/*
+!personal-style-slides/assets/templates/.gitkeep
+
+personal-style-slides/assets/examples/*
+!personal-style-slides/assets/examples/.gitkeep
+!personal-style-slides/assets/examples/bad_examples/
+personal-style-slides/assets/examples/bad_examples/*
+!personal-style-slides/assets/examples/bad_examples/.gitkeep
+
+personal-style-slides/assets/style_memory/*
+!personal-style-slides/assets/style_memory/.gitkeep
+
+# Generated outputs
+outputs/
+workspace/
+render_check/
+style_profile_output/
+template_screenshots/
+extracted_assets/
+rendered_pages/
+*.auto.json
+*.auto.md
+style_fingerprint.json
+style_similarity_report.json
+
+# Private source documents
+*.pptx
+*.docx
+*.pdf
+*.key
+
+# Python
+__pycache__/
+*.pyc

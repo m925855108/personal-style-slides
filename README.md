@@ -22,116 +22,111 @@ Personal Style Slides 是一个可直接安装的 Codex/Claude-style skill。它
 生成个性化 HTML slides
         |
         v
-静态检查 + 可选浏览器渲染验证
+静态检查 + 可选浏览器验证
         |
         v
-用户反馈修改
+用户反馈
         |
         v
 经用户允许后写入本地风格记忆
 ```
 
-## 功能优势
+## 主要功能
 
-- 从你自己的 PPTX、HTML、PDF、旧 deck 或截图中学习风格，而不是套用通用主题。
-- 保留页面节奏、字体层级、内容密度、图文比例、图注处理、页脚样式等个人习惯。
-- 针对科研场景增加保护：保留科学表述、来源图片、证据链和不确定性说明。
-- 输出浏览器可打开的 HTML slides，并支持 print/PDF。
-- 内置辅助脚本：source inspection、style profile 提取、静态检查、浏览器渲染验证、style memory 更新。
-- 隐私优先：真实模板、未发表结果图、机构 logo、导师批注、商业字体和个人 style memory 都留在本地。
+- 从用户认可的 PPTX、HTML deck、PDF 或截图中学习风格，而不是套用通用主题。
+- 保持用户已有的版式节奏、标题习惯、字体层级、内容密度、图文比例和图注风格。
+- 支持科研/学术材料中的图像、论点和来源追踪。
+- 生成浏览器可打开的 HTML slides，并支持打印/PDF 导出方向的检查。
+- 提供静态检查、浏览器渲染验证、轻量风格指纹比较和风格记忆更新脚本。
+- 默认保护隐私：真实模板、未发表图、机构 logo、导师批注和个人风格记忆应留在本地。
 
 ## 安装
 
-这个仓库的根目录不是 skill。真正需要安装的是内层目录：
+这个仓库有两层结构：
 
 ```text
-personal-style-slides/
-  SKILL.md
-  agents/
-  assets/
-  references/
-  scripts/
+repo root/
+  README.md
+  README_EN.md
+  requirements.txt
+  examples_demo/
+
+  personal-style-slides/   # 只安装这个目录作为 skill
+    SKILL.md
+    agents/
+    assets/
+    references/
+    scripts/
 ```
+
+不要把整个仓库根目录安装为 skill。只安装 `personal-style-slides/` 子目录。
 
 ### 安装到 Codex
-
-Windows PowerShell：
-
-```powershell
-git clone https://github.com/m925855108/personal-style-slides.git
-Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.codex\skills\"
-```
-
-macOS/Linux：
 
 ```bash
 git clone https://github.com/m925855108/personal-style-slides.git
 cp -r personal-style-slides/personal-style-slides ~/.codex/skills/
 ```
 
-如果你的 Codex skills 目录不同，请把目标路径替换为实际目录。
-
-### 安装到 Claude
-
-macOS/Linux：
-
-```bash
-git clone https://github.com/m925855108/personal-style-slides.git
-mkdir -p ~/.claude/skills
-cp -r personal-style-slides/personal-style-slides ~/.claude/skills/
-```
-
-Windows PowerShell：
+Windows PowerShell 示例：
 
 ```powershell
 git clone https://github.com/m925855108/personal-style-slides.git
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills"
-Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.claude\skills\"
+Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.codex\skills\personal-style-slides"
 ```
 
-如果你的 Claude 客户端使用不同的 skills 目录，请按实际路径复制。
+### 安装到 Claude
 
-### 下载 ZIP 安装
+```bash
+git clone https://github.com/m925855108/personal-style-slides.git
+cp -r personal-style-slides/personal-style-slides ~/.claude/skills/
+```
 
-从 GitHub 下载 ZIP，解压后只复制内层 `personal-style-slides/` 文件夹到 Codex 或 Claude 的 skills 目录。不要复制整个仓库根目录。
+Windows PowerShell 示例：
 
-## 快速开始
+```powershell
+git clone https://github.com/m925855108/personal-style-slides.git
+Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.claude\skills\personal-style-slides"
+```
 
-安装可选依赖：
+如果你的客户端使用不同的 skills 目录，请把目标路径替换为实际路径。
+
+### ZIP 安装
+
+下载仓库 ZIP，解压后把里面的 `personal-style-slides/` 子目录复制到 Codex 或 Claude 的 skills 目录。
+
+## 可选依赖
+
+skill 本体可以直接安装。下面这些依赖只用于本地辅助脚本：
 
 ```bash
 pip install -r requirements.txt
 python -m playwright install chromium
-```
-
-检查本地环境：
-
-```bash
 python personal-style-slides/scripts/doctor.py
 ```
 
-把你认可的模板或旧 deck 放到：
+PPTX 视觉渲染 fallback 需要：
 
 ```text
-personal-style-slides/assets/templates/
+LibreOffice: PPTX -> PDF
+PyMuPDF: PDF -> PNG
 ```
 
-提取风格种子：
+如果缺少这些工具，skill 会回退到轻量 metadata 检查，不应声称已经完成完整视觉模板解析。
+
+## 快速开始
+
+1. 把你认可的模板、旧 deck 或截图放入本地 skill 的 `assets/templates/`。
+2. 让 Codex/Claude 使用已安装的 `personal-style-slides` skill。
+3. 生成后运行可选检查脚本。
 
 ```bash
-python personal-style-slides/scripts/extract_style_profile.py \
-  personal-style-slides/assets/templates/my_template.pptx \
-  --out-dir style_profile_output
-```
-
-生成 deck 后运行检查：
-
-```bash
+python personal-style-slides/scripts/extract_style_profile.py personal-style-slides/assets/templates/my_template.pptx
 python personal-style-slides/scripts/check_html_deck.py outputs/index.html
 python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
 ```
 
-PPTX 视觉渲染需要 LibreOffice 完成 PPTX 到 PDF 的转换，并需要 PyMuPDF 将 PDF 页面渲染为 PNG。如果缺少这些工具，PPTX 检查会降级为 OOXML 元数据提取。
+`extract_style_profile.py` 生成的是紧凑风格种子，不是完整视觉重建。最终风格判断仍需要结合截图和人工检查。
 
 ## 示例提示词
 
@@ -207,6 +202,10 @@ LICENSE
 - 风格指纹比较只是辅助提示，不能证明视觉相似。
 - 静态 HTML 检查不能证明浏览器渲染后没有重叠。
 - 浏览器渲染验证依赖 Playwright 或本地浏览器。
+
+## Credits
+
+Created by @MV with Codex.
 
 ## License
 

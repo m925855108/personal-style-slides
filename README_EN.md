@@ -22,7 +22,7 @@ Extract compact style seed
 Generate personalized HTML slides
         |
         v
-Static checks + optional browser-render verification
+Static checks + optional browser verification
         |
         v
 User feedback
@@ -33,105 +33,100 @@ Update local style memory only with approval
 
 ## Key Features
 
-- Learns from your own approved PPTX, HTML, PDF, old decks, or screenshots instead of generic themes.
-- Preserves slide rhythm, typography hierarchy, density, figure/text ratio, caption treatment, and footer style.
-- Adds research safeguards for scientific wording, source figures, evidence traceability, and uncertainty notes.
-- Outputs browser-ready HTML slides with print/PDF support.
-- Includes helper scripts for source inspection, style profile extraction, static checks, browser-render verification, and style memory updates.
-- Privacy-first: real templates, unpublished figures, institutional logos, advisor comments, commercial fonts, and personal style memory stay local.
+- Learns from your approved PPTX, HTML deck, PDF, or screenshots instead of generic themes.
+- Preserves your slide rhythm, title habits, typography hierarchy, density, figure/text ratio, and caption style.
+- Supports traceable claims, figures, and source references for research and academic materials.
+- Generates browser-ready HTML slides with print/PDF-oriented checks.
+- Provides static checks, browser-render verification, lightweight style fingerprint comparison, and style memory update scripts.
+- Keeps private templates, unpublished figures, logos, comments, and style memory local by default.
 
-## Installation
+## Install
 
-The repository root is not the installable skill. Install only the inner folder:
+This repository has two layers:
 
 ```text
-personal-style-slides/
-  SKILL.md
-  agents/
-  assets/
-  references/
-  scripts/
+repo root/
+  README.md
+  README_EN.md
+  requirements.txt
+  examples_demo/
+
+  personal-style-slides/   # install only this folder as the skill
+    SKILL.md
+    agents/
+    assets/
+    references/
+    scripts/
 ```
 
-### Install For Codex
+Do not install the repository root as a skill. Install only the `personal-style-slides/` subfolder.
 
-Windows PowerShell:
-
-```powershell
-git clone https://github.com/m925855108/personal-style-slides.git
-Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.codex\skills\"
-```
-
-macOS/Linux:
+### Install for Codex
 
 ```bash
 git clone https://github.com/m925855108/personal-style-slides.git
 cp -r personal-style-slides/personal-style-slides ~/.codex/skills/
 ```
 
-Replace the target path if your Codex skills directory is different.
-
-### Install For Claude
-
-macOS/Linux:
-
-```bash
-git clone https://github.com/m925855108/personal-style-slides.git
-mkdir -p ~/.claude/skills
-cp -r personal-style-slides/personal-style-slides ~/.claude/skills/
-```
-
-Windows PowerShell:
+Windows PowerShell example:
 
 ```powershell
 git clone https://github.com/m925855108/personal-style-slides.git
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills"
-Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.claude\skills\"
+Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.codex\skills\personal-style-slides"
 ```
 
-If your Claude client uses a different skills directory, copy the folder there instead.
+### Install for Claude
 
-### Install From ZIP
+```bash
+git clone https://github.com/m925855108/personal-style-slides.git
+cp -r personal-style-slides/personal-style-slides ~/.claude/skills/
+```
 
-Download ZIP from GitHub, unzip it, and copy only the inner `personal-style-slides/` folder into your Codex or Claude skills directory. Do not copy the repository root as the skill.
+Windows PowerShell example:
 
-## Quick Start
+```powershell
+git clone https://github.com/m925855108/personal-style-slides.git
+Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFILE\.claude\skills\personal-style-slides"
+```
 
-Install optional dependencies:
+If your client uses a different skills directory, replace the target path with the actual one.
+
+### ZIP Install
+
+Download the repository ZIP, unzip it, then copy the inner `personal-style-slides/` folder into your Codex or Claude skills directory.
+
+## Optional Dependencies
+
+The skill itself can be installed directly. These dependencies are only for local helper scripts:
 
 ```bash
 pip install -r requirements.txt
 python -m playwright install chromium
-```
-
-Check the local environment:
-
-```bash
 python personal-style-slides/scripts/doctor.py
 ```
 
-Put your approved template or old deck here:
+PPTX visual rendering fallback requires:
 
 ```text
-personal-style-slides/assets/templates/
+LibreOffice: PPTX -> PDF
+PyMuPDF: PDF -> PNG
 ```
 
-Extract a style seed:
+If these tools are unavailable, the skill falls back to lightweight metadata checks and should not claim complete visual template parsing.
+
+## Quick Start
+
+1. Put an approved template, old deck, or screenshot into the local skill's `assets/templates/`.
+2. Ask Codex/Claude to use the installed `personal-style-slides` skill.
+3. After generation, run optional helper checks.
 
 ```bash
-python personal-style-slides/scripts/extract_style_profile.py \
-  personal-style-slides/assets/templates/my_template.pptx \
-  --out-dir style_profile_output
-```
-
-After generating a deck, run checks:
-
-```bash
+python personal-style-slides/scripts/extract_style_profile.py personal-style-slides/assets/templates/my_template.pptx
 python personal-style-slides/scripts/check_html_deck.py outputs/index.html
 python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
 ```
 
-PPTX visual rendering requires LibreOffice for PPTX-to-PDF conversion and PyMuPDF for PDF-to-PNG rendering. Without both, PPTX inspection falls back to OOXML metadata.
+`extract_style_profile.py` produces a compact style seed, not a complete visual reconstruction. Final style judgment still requires screenshots and manual review.
 
 ## Example Prompts
 
@@ -142,7 +137,7 @@ Learn the style from assets/templates/my_template.pptx, then create an 8-minute 
 
 ```text
 Use the personal-style-slides skill.
-This old deck is my approved style reference. Revise the new deck to match its layout rhythm, figure/text ratio, and caption treatment.
+This old deck is the style reference. Please revise the new content to match its layout rhythm, figure/text ratio, and caption style.
 ```
 
 ```text
@@ -207,6 +202,10 @@ This repository publishes the skill framework, not private user content.
 - Style fingerprint comparison is advisory and cannot prove visual similarity.
 - Static HTML checks cannot prove rendered non-overlap.
 - Browser-render verification depends on Playwright or a local browser.
+
+## Credits
+
+Created by @MV with Codex.
 
 ## License
 

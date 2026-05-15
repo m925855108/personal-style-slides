@@ -59,7 +59,7 @@ repo root/
     scripts/
 ```
 
-不要把整个仓库根目录安装为 skill。只安装 `personal-style-slides/` 子目录。
+请不要把整个仓库根目录安装为 skill。只安装 `personal-style-slides/` 子目录。
 
 ### 安装到 Codex
 

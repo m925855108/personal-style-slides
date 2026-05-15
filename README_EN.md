@@ -134,6 +134,35 @@ python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html 
 
 `extract_style_profile.py` produces a compact style seed, not a complete visual reconstruction. Final style judgment still requires screenshots and manual review.
 
+## Included Helper Scripts
+
+These scripts are not a rigid checklist that you must run by hand every time. They are helper tools for Codex/Claude when the skill is active, and you can also run them manually when you want to diagnose the environment, inspect output, or reuse a style. Most scripts are designed to degrade gently: if an optional dependency is missing, they should report the limitation instead of pretending that full verification was completed.
+
+| Script | Purpose | Typical use |
+| --- | --- | --- |
+| `doctor.py` | Checks Python, browser, LibreOffice, PyMuPDF, Playwright, and related environment capabilities. | After installation, when scripts fail, or when browser verification is unavailable. |
+| `inspect_sources.py` | Inspects PPTX, DOCX, PDF, HTML, LaTeX, or screenshot folders and summarizes text, images, pages, and template metadata. | When source documents, templates, or asset folders are available. |
+| `extract_style_profile.py` | Extracts a compact style seed from a template, old deck, PDF, HTML deck, or screenshots. | Before generating or substantially revising a deck, so the agent can understand your style first. |
+| `check_html_deck.py` | Performs static checks for slide sections, image paths, repeated images, and risky CSS patterns. | After generating HTML, as a basic sanity check. |
+| `verify_rendered_deck.py` | Uses Playwright or a local browser for rendered checks, screenshots, and DOM box inspection. | When a browser or Playwright is available and rendered layout risk matters. |
+| `extract_style_fingerprint.py` | Extracts a lightweight style fingerprint from a style profile. | Before comparing a generated deck against a template style. |
+| `compare_style_fingerprint.py` | Compares two style fingerprints and reports matched or drifted traits. | To check whether colors, density, and layout habits roughly stayed close to the template. |
+| `update_style_memory.py` | Lists, appends, or removes local style memory entries. | Only when you explicitly want a preference remembered long term. |
+| `style_utils.py` | Internal helper functions shared by the other scripts. | Usually not run directly. |
+
+## What Runs Automatically
+
+When you ask Codex/Claude to use the `personal-style-slides` skill, the skill guides the agent to choose the right steps for the task. It should not run the full workflow for every small edit.
+
+- If a template, old deck, PDF, HTML deck, or screenshot is available, the agent should inspect it first and use `inspect_sources.py` or `extract_style_profile.py` when useful.
+- After generating or revising an HTML deck, the agent should usually run `check_html_deck.py` for static checks.
+- If Playwright or a local browser is available, the agent may run `verify_rendered_deck.py` for rendered verification. If not available, it should clearly state the downgrade to static checks or screenshot-only evidence.
+- When style similarity matters, the agent may use `extract_style_fingerprint.py` and `compare_style_fingerprint.py`, but these reports are advisory and do not replace screenshots or human review.
+- `update_style_memory.py` should not write long-term memory automatically. The agent should update style memory only when you explicitly approve it or say something like "remember this style", "use this from now on", or "avoid this in the future".
+- `doctor.py` is usually a manual diagnostic tool. The agent may suggest it when the environment is unclear, a browser cannot be found, or PPTX/PDF rendering support needs to be checked.
+
+Small tasks should use a light path. For example, a one-slide edit, image replacement, or font-size adjustment should not trigger a full style-learning pass. Formal builds or major redesigns are better candidates for style extraction, content review, static checks, and browser-render verification.
+
 ## Example Prompts
 
 ```text

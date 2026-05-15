@@ -95,6 +95,12 @@ Copy-Item -Recurse .\personal-style-slides\personal-style-slides "$env:USERPROFI
 
 下载仓库 ZIP，解压后把里面的 `personal-style-slides/` 子目录复制到 Codex 或 Claude 的 skills 目录。
 
+如果客户端没有立即识别新 skill，请重启 Codex/Claude。安装后可以用下面的提示词验证：
+
+```text
+请检查 personal-style-slides skill 是否可用，并概括它适合做什么。
+```
+
 ## 可选依赖
 
 skill 本体可以直接安装。下面这些依赖只用于本地辅助脚本：

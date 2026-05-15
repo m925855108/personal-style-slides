@@ -95,6 +95,12 @@ If your client uses a different skills directory, replace the target path with t
 
 Download the repository ZIP, unzip it, then copy the inner `personal-style-slides/` folder into your Codex or Claude skills directory.
 
+If the client does not detect the new skill immediately, restart Codex/Claude. After installation, verify with:
+
+```text
+Check whether the personal-style-slides skill is available and summarize what it is for.
+```
+
 ## Optional Dependencies
 
 The skill itself can be installed directly. These dependencies are only for local helper scripts:

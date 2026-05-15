@@ -134,6 +134,35 @@ python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html 
 
 `extract_style_profile.py` 生成的是紧凑风格种子，不是完整视觉重建。最终风格判断仍需要结合截图和人工检查。
 
+## 内置辅助脚本
+
+这些脚本不是一个必须逐个手动运行的固定流水线。它们是给 Codex/Claude 使用 skill 时调用的辅助工具；你也可以在需要排查环境、检查输出或复用风格时手动运行。大多数脚本都会尽量温和降级：缺少可选依赖时会说明限制，而不是假装完成了完整验证。
+
+| 脚本 | 用途 | 常见使用时机 |
+| --- | --- | --- |
+| `doctor.py` | 检查 Python、浏览器、LibreOffice、PyMuPDF、Playwright 等环境能力。 | 安装后、脚本失败时、浏览器验证不可用时。 |
+| `inspect_sources.py` | 读取 PPTX、DOCX、PDF、HTML、LaTeX 或截图目录，整理文字、图片、页面和模板信息。 | 有源文档、模板或素材目录时，用于建立 source/template inventory。 |
+| `extract_style_profile.py` | 从模板、旧 deck、PDF、HTML 或截图中提取紧凑风格种子。 | 生成或大改 deck 前，帮助 agent 先理解你的风格。 |
+| `check_html_deck.py` | 静态检查 HTML slides 的 section、图片路径、重复图片、风险 CSS。 | 生成 HTML 后的基础 sanity check。 |
+| `verify_rendered_deck.py` | 用 Playwright 或本地浏览器做渲染检查、截图和 DOM box 检查。 | 有浏览器/Playwright 时，用于确认渲染后的版面风险。 |
+| `extract_style_fingerprint.py` | 从风格画像中提取轻量风格指纹。 | 需要比较模板和生成结果是否偏离时。 |
+| `compare_style_fingerprint.py` | 比较两个风格指纹，输出匹配项和漂移项。 | 检查生成结果是否大体保留模板的颜色、密度和布局习惯。 |
+| `update_style_memory.py` | 查看、追加或移除本地 style memory 条目。 | 只有当你明确希望长期记住某个偏好时使用。 |
+| `style_utils.py` | 供其他脚本复用的内部工具函数。 | 通常不需要直接运行。 |
+
+## 使用时会自动做什么
+
+当你请求 Codex/Claude 使用 `personal-style-slides` skill 时，skill 会指导 agent 按任务轻重自动选择步骤，而不是每次都跑完整流程。
+
+- 有模板、旧 deck、PDF、HTML 或截图时，agent 应优先读取这些文件，并在需要时使用 `inspect_sources.py` 或 `extract_style_profile.py` 提取风格种子。
+- 生成或修改 HTML deck 后，agent 应优先运行 `check_html_deck.py` 做静态检查。
+- 如果本地有 Playwright 或可用浏览器，agent 可以运行 `verify_rendered_deck.py` 做渲染检查；如果不可用，应明确说明降级为静态检查或截图检查。
+- 需要判断是否“像你的模板”时，agent 可以使用 `extract_style_fingerprint.py` 和 `compare_style_fingerprint.py`，但这些报告只是辅助判断，不能替代截图和人工审查。
+- `update_style_memory.py` 不会自动写入长期记忆。只有当你明确说“记住这个风格”“以后都这样”“以后不要这样”或同意保存时，agent 才应更新 style memory。
+- `doctor.py` 通常是手动诊断工具；当环境异常、浏览器找不到或 PPTX/PDF 渲染能力不明确时，agent 可以建议运行它。
+
+简短任务会走轻流程。例如只改一页、换图或调整字号时，agent 不应强行重新提取完整风格画像。正式或大改任务才更适合走风格提取、内容核对、静态检查和浏览器验证的完整路径。
+
 ## 示例提示词
 
 ```text

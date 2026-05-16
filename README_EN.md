@@ -61,6 +61,20 @@ repo root/
 
 Do not install the repository root as a skill. Install only the `personal-style-slides/` subfolder.
 
+If you use a skill installer that accepts GitHub URLs, use the skill subfolder URL, not the repository root URL:
+
+```text
+https://github.com/m925855108/personal-style-slides/tree/main/personal-style-slides
+```
+
+For example, Codex's installer script needs the path explicitly:
+
+```bash
+python install-skill-from-github.py --repo m925855108/personal-style-slides --path personal-style-slides --dest D:/CodexSkills
+```
+
+Using only the repository root URL `https://github.com/m925855108/personal-style-slides` may fail because the installer cannot know which subfolder is the actual skill.
+
 ### Install for Codex
 
 ```bash

@@ -59,7 +59,21 @@ repo root/
     scripts/
 ```
 
-请不要把整个仓库根目录安装为 skill。只安装 `personal-style-slides/` 子目录。
+不要把整个仓库根目录安装为 skill。只安装 `personal-style-slides/` 子目录。
+
+如果使用支持 GitHub URL 的 skill installer，请使用子目录地址，而不是仓库根地址：
+
+```text
+https://github.com/m925855108/personal-style-slides/tree/main/personal-style-slides
+```
+
+例如 Codex 的安装脚本需要显式指定路径：
+
+```bash
+python install-skill-from-github.py --repo m925855108/personal-style-slides --path personal-style-slides --dest D:/CodexSkills
+```
+
+直接使用仓库根地址 `https://github.com/m925855108/personal-style-slides` 可能会失败，因为安装器无法判断哪个子目录才是真正的 skill。
 
 ### 安装到 Codex
 

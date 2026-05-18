@@ -9,6 +9,8 @@ description: Create personalized HTML slide decks by learning from the user's ap
 
 This is not a universal slide-design system. It is a template-seeded, feedback-refined personal HTML slide workflow, optimized for research and academic presentations. The user does not need to manually build a style library: an approved template, old deck, or screenshot is the style seed; conversation feedback becomes reusable style memory only when the user approves or uses clear long-term wording.
 
+This skill is HTML-first. It generates or revises browser-based slide decks, usually `index.html` plus local assets. It can inspect PPTX files as sources or style seeds, but it does not directly generate high-fidelity editable `.pptx` output unless the user separately provides or requests a dedicated PPTX conversion workflow.
+
 Prioritize preserving the user's established visual grammar while keeping scientific claims traceable, figures source-backed, text readable for projection, and rendered slides free of avoidable layout failures.
 
 ## Priority Order
@@ -85,6 +87,7 @@ Use when the user explicitly says proposal, defense, thesis, qualifying report, 
 8. **Source Images By Default** - Use images from the supplied documents, extracted assets, or templates by default. Do not replace document figures with unrelated generated images, web images, or placeholders unless the user explicitly approves that substitution.
 9. **Evidence Over Aesthetics** - In research decks, figures, equations, tables, and source-backed diagrams are first-class content. Decorative visuals must never displace evidence.
 10. **Imitate, Do Not Blindly Copy** - Preserve the user's visual grammar, but adapt layout density, figure scale, and slide splitting to the new scientific content.
+11. **Be Honest About Output** - Do not describe the result as editable PowerPoint output unless a real `.pptx` file was produced and verified. For this skill, the default deliverable is an HTML slide deck.
 
 ## Phase 0: Detect Scenario
 
@@ -261,6 +264,8 @@ Choose an output dependency mode:
 - **cdn-light** - Use for fast draft-build only, or when the user approves network dependencies.
 
 Formal-build should avoid CDN unless local vendoring is unavailable and the risk is documented. Do not generate a long README by default. For formal-build, create a concise `delivery_notes.md` only when multiple assets, verification reports, or export instructions are involved; otherwise keep delivery notes in the final response.
+
+Do not promise a native editable PowerPoint deck. If the user needs `.pptx`, state that this skill's primary output is HTML slides and either ask whether HTML is acceptable or use a separate PPTX-capable workflow/tool if one is available.
 
 Required features:
 

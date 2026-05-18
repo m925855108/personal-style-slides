@@ -22,6 +22,7 @@ style_profile_output/
 template_screenshots/
 extracted_assets/
 rendered_pages/
+examples_demo/*/run_output/
 *.auto.json
 *.auto.md
 style_fingerprint.json

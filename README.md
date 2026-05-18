@@ -10,6 +10,8 @@ Personal Style Slides 是一个可直接安装的 Codex/Claude-style skill。它
 
 它主要面向博士开题、答辩、组会、文献汇报、模拟结果汇报和学术演示；也可以用于其他“需要按个人模板风格生成 HTML slides”的场景。
 
+默认输出是浏览器可打开的 HTML slides，而不是可在 PowerPoint 中继续编辑的原生 `.pptx` 文件。它可以把 PPTX 当作风格种子或素材来源来检查，但目前不应被理解为高保真 PPTX 复刻器或一键 PPTX 生成器。
+
 ## 核心流程
 
 ```text
@@ -134,6 +136,15 @@ PyMuPDF: PDF -> PNG
 
 如果缺少这些工具，skill 会回退到轻量 metadata 检查，不应声称已经完成完整视觉模板解析。
 
+能力分级可以这样理解：
+
+| 环境能力 | 能做什么 | 限制 |
+| --- | --- | --- |
+| 无额外依赖 | 安装 skill、读取说明、生成/修改 HTML slides、运行部分标准库脚本。 | PDF/PPTX 视觉解析和浏览器 DOM 验证会降级。 |
+| `PyMuPDF` / `pypdf` | 改善 PDF 文本、图片和页面渲染读取。 | PDF 中的矢量图、组合图和复杂版式仍可能需要截图或人工裁剪。 |
+| LibreOffice + PyMuPDF | 可尝试 PPTX -> PDF -> PNG 页面渲染，把 PPTX 页面截图作为模板视觉参考。 | 仍不是完整 PPTX 语义解析，不能保证精确还原每个 shape、裁剪和动画。 |
+| Playwright + Chromium | 可做更可靠的浏览器截图、DOM box、溢出和加载检查。 | 只能降低视觉风险，不能替代最终人工审美检查。 |
+
 ## 快速开始
 
 1. 把你认可的模板、旧 deck 或截图放入本地 skill 的 `assets/templates/`。
@@ -213,6 +224,30 @@ output/style_summary.auto.md
 
 demo 使用合成材料，不包含私人数据。
 
+可以运行一条命令做完整 demo smoke test：
+
+```bash
+python examples_demo/run_demo.py
+```
+
+它会运行环境检查、风格画像提取、风格指纹提取和 HTML 静态检查，并把结果写入：
+
+```text
+examples_demo/demo_template_seed/run_output/
+```
+
+这个 demo 的目标是证明公开仓库和辅助脚本能跑通；它不是复杂 PPTX 模板继承能力的证明。
+
+## 测试
+
+仓库包含最小 smoke tests：
+
+```bash
+python -m unittest discover tests
+```
+
+这些测试覆盖 HTML 静态检查、缺失图片报错、demo 风格画像提取和风格指纹比较。它们用于防止脚本升级时静默损坏，不代表完整视觉质量验收。
+
 ## 仓库结构
 
 ```text
@@ -247,10 +282,12 @@ LICENSE
 ## 局限
 
 - 这是 skill 包，不是独立 slide 应用、Web 应用或完整 CLI 产品。
+- 默认生成 HTML slides，不直接生成可编辑 `.pptx` 文件。
 - 风格提取只是紧凑风格种子，不是完整视觉重建。
+- PPTX 可以作为模板和素材来源，但当前不能保证高保真复刻 PowerPoint 版式、裁剪、动画或所有 shape 语义。
 - 风格指纹比较只是辅助提示，不能证明视觉相似。
 - 静态 HTML 检查不能证明浏览器渲染后没有重叠。
-- 浏览器渲染验证依赖 Playwright 或本地浏览器。
+- 浏览器渲染验证依赖 Playwright 或本地浏览器；即使通过，也仍建议人工查看最终截图。
 
 ## Credits
 

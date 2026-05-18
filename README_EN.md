@@ -10,6 +10,8 @@ Personal Style Slides is an installable Codex/Claude-style skill. It is not a ge
 
 It is optimized for thesis proposals, defenses, group meetings, literature reports, simulation/result reports, and academic presentations. It can also be used for other personalized HTML slide work when matching a user's template style is the main requirement.
 
+The default output is a browser-ready HTML slide deck, not a native editable `.pptx` file. PPTX files can be inspected as style seeds or source materials, but this skill should not be treated as a high-fidelity PPTX cloning tool or one-click PPTX generator.
+
 ## Core Workflow
 
 ```text
@@ -134,6 +136,15 @@ PyMuPDF: PDF -> PNG
 
 If these tools are unavailable, the skill falls back to lightweight metadata checks and should not claim complete visual template parsing.
 
+Think of the dependency levels this way:
+
+| Environment capability | What it enables | Limitation |
+| --- | --- | --- |
+| No optional dependencies | Install the skill, read instructions, generate/revise HTML slides, and run some standard-library scripts. | PDF/PPTX visual parsing and browser DOM verification downgrade. |
+| `PyMuPDF` / `pypdf` | Better PDF text, image, and page-render inspection. | Vector figures, grouped objects, and complex layouts may still need screenshots or manual cropping. |
+| LibreOffice + PyMuPDF | Attempts PPTX -> PDF -> PNG page rendering so slide screenshots can become visual template references. | Still not full PPTX semantic parsing; it cannot guarantee exact reconstruction of every shape, crop, or animation. |
+| Playwright + Chromium | More reliable browser screenshots, DOM box checks, overflow checks, and load checks. | Reduces visual risk, but does not replace final human review of screenshots. |
+
 ## Quick Start
 
 1. Put an approved template, old deck, or screenshot into the local skill's `assets/templates/`.
@@ -213,6 +224,30 @@ template seed -> style summary/profile -> personalized deck generation
 
 The demo uses synthetic materials and contains no private data.
 
+Run one command for a complete demo smoke test:
+
+```bash
+python examples_demo/run_demo.py
+```
+
+It runs environment inspection, style profile extraction, style fingerprint extraction, and static HTML checks, then writes results to:
+
+```text
+examples_demo/demo_template_seed/run_output/
+```
+
+This demo proves that the public repository and helper scripts run correctly. It does not prove complex PPTX template inheritance.
+
+## Tests
+
+The repository includes minimal smoke tests:
+
+```bash
+python -m unittest discover tests
+```
+
+These tests cover static HTML checks, missing-image errors, demo style profile extraction, and style fingerprint comparison. They help prevent silent script regressions, but they are not complete visual quality validation.
+
 ## Repository Structure
 
 ```text
@@ -247,10 +282,12 @@ This repository publishes the skill framework, not private user content.
 ## Limitations
 
 - This is a skill package, not a standalone slide application, web app, or full CLI product.
+- It generates HTML slides by default and does not directly generate editable `.pptx` files.
 - Style extraction is a compact style seed, not a complete visual reconstruction.
+- PPTX files can be used as templates and source materials, but the current implementation cannot guarantee high-fidelity reconstruction of PowerPoint layout, crops, animations, or all shape semantics.
 - Style fingerprint comparison is advisory and cannot prove visual similarity.
 - Static HTML checks cannot prove rendered non-overlap.
-- Browser-render verification depends on Playwright or a local browser.
+- Browser-render verification depends on Playwright or a local browser; even when it passes, final screenshot review is still recommended.
 
 ## Credits
 

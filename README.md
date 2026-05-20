@@ -35,6 +35,8 @@
 - **个人化优先**：保留你的标题习惯、图文比例、内容密度、图注风格和页面节奏。
 - **HTML-first**：默认生成 `index.html` + 本地资源目录，适合浏览器演示和 PDF/print 方向检查。
 - **科研友好**：强调真实图像、来源追踪、谨慎表述，不鼓励随便换图或编结论。
+- **版式安全护栏**：提供 `layout_safety.css` 和渲染后 DOM 检查，尽量减少拥挤、溢出和遮挡。
+- **风格指纹比较**：用可解释的颜色、字号、密度、图文比例和 layout motif 比较结果是否偏离模板。
 - **轻量风格记忆**：只有你明确同意时，才把长期偏好写入本地 `style_memory`。
 - **可降级检查**：有 Playwright 就做渲染验证；没有也会跑静态检查，并说明哪些东西没验证。
 - **隐私默认本地**：真实模板、未发表图、机构 logo、导师批注和个人风格记忆都不应该提交到公开仓库。
@@ -180,10 +182,12 @@ examples_demo/demo_template_seed/run_output/
 | `extract_style_profile.py` | 从模板、旧 deck、PDF、HTML 或截图里提取紧凑风格种子。 | 生成或大改 deck 前。 |
 | `check_html_deck.py` | 静态检查 HTML slides 的 section、图片路径、重复图片和风险 CSS。 | 生成 HTML 后。 |
 | `verify_rendered_deck.py` | 用 Playwright 或本地浏览器做渲染检查、截图和 DOM box 检查。 | 布局风险较高，或需要截图证据时。 |
-| `extract_style_fingerprint.py` | 提取轻量风格指纹。 | 要比较模板和生成结果时。 |
-| `compare_style_fingerprint.py` | 比较两个风格指纹，报告匹配和漂移。 | 检查结果是否大体保留模板风格。 |
+| `extract_style_fingerprint.py` | 提取轻量风格指纹，包括颜色、字号、密度、图文比例、layout motif 和 CSS/class 线索。 | 要比较模板和生成结果时。 |
+| `compare_style_fingerprint.py` | 比较两个风格指纹，报告匹配、漂移和需要人工复核的地方。 | 检查结果是否大体保留模板风格。 |
 | `update_style_memory.py` | 查看、追加或移除本地 style memory。 | 只有你明确同意长期记住某个偏好时。 |
 | `style_utils.py` | 内部公共函数。 | 通常不用直接跑。 |
+
+`assets/layout_safety.css` 不是主题模板，而是一组中性的版式安全护栏：标题区、内容区、页脚区预留空间，限制图片高度，并用 grid/flex 减少 HTML slide 里常见的拥挤和遮挡。正式做 deck 时可以按你的模板风格改色、改间距，但不建议删掉这些安全边界。
 
 手动跑几个常见检查：
 
@@ -249,9 +253,9 @@ python -m unittest discover tests
 - 默认生成 HTML slides，不直接生成可编辑 `.pptx`。
 - 风格提取是紧凑风格种子，不是完整视觉重建。
 - PPTX 可以作为模板和素材来源，但不能保证高保真复刻 PowerPoint 版式、裁剪、动画或所有 shape 语义。
-- 风格指纹比较只是辅助判断，不能证明“看起来完全像”。
+- 风格指纹比较只是辅助判断，不能证明“看起来完全像”。它更像一组可解释的个人风格特征，不是训练出来的小模型。
 - 静态 HTML 检查不能证明浏览器渲染后没有重叠。
-- 浏览器渲染验证能降低风险，但最后还是建议人工看截图。
+- 浏览器渲染验证会检查更多风险，比如标题/正文/页脚冲突、文本密度、多图拥挤和中间窄带布局；但最后还是建议人工看截图。
 
 ## 贡献
 

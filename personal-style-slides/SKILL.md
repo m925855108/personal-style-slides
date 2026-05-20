@@ -87,7 +87,8 @@ Use when the user explicitly says proposal, defense, thesis, qualifying report, 
 8. **Source Images By Default** - Use images from the supplied documents, extracted assets, or templates by default. Do not replace document figures with unrelated generated images, web images, or placeholders unless the user explicitly approves that substitution.
 9. **Evidence Over Aesthetics** - In research decks, figures, equations, tables, and source-backed diagrams are first-class content. Decorative visuals must never displace evidence.
 10. **Imitate, Do Not Blindly Copy** - Preserve the user's visual grammar, but adapt layout density, figure scale, and slide splitting to the new scientific content.
-11. **Be Honest About Output** - Do not describe the result as editable PowerPoint output unless a real `.pptx` file was produced and verified. For this skill, the default deliverable is an HTML slide deck.
+11. **Use Explainable Style Fingerprints** - Treat personal style as a set of comparable traits: canvas, title/footer habits, density, color, type scale, layout motifs, figure treatment, caption style, and image/text ratio. Do not claim a trained style model exists unless one was actually used.
+12. **Be Honest About Output** - Do not describe the result as editable PowerPoint output unless a real `.pptx` file was produced and verified. For this skill, the default deliverable is an HTML slide deck.
 
 ## Phase 0: Detect Scenario
 
@@ -138,6 +139,13 @@ Create a compact current-task style contract with:
 - known dislikes and rejected patterns
 - allowed modernization level
 - examples/templates to imitate and rejected patterns to avoid
+
+For early-stage personalization, prefer a deterministic style fingerprint over a vague style description:
+
+- Use rendered screenshots when available because they preserve title placement, footer placement, spacing, and visual motifs better than file metadata alone.
+- Extract a compact fingerprint with `scripts/extract_style_fingerprint.py` when comparing a reference deck/template against a generated deck.
+- Compare generated output with `scripts/compare_style_fingerprint.py` when the user explicitly cares about template fidelity or when a previous attempt drifted from the user's style.
+- Treat fingerprint output as advisory. It is a structured similarity check, not proof that the deck fully matches the user's aesthetic.
 
 After delivery or user feedback:
 
@@ -281,6 +289,7 @@ Required features:
 Slide layout requirements:
 
 - Use a consistent slide shell: title region, content region, footer region.
+- For new decks or substantial redesigns, adapt `assets/layout_safety.css` or implement equivalent reserved title/content/footer regions before custom visual styling.
 - Center content within the usable frame, not merely inside a card.
 - Evaluate where the text sits on the whole screen, not only whether a card is centered.
 - Avoid middle-band layouts where all text is compressed into a narrow horizontal strip with empty space above and below.
@@ -295,6 +304,7 @@ Slide layout requirements:
 - Keep `line-height`, margins, and card padding consistent for the same content role across all slides.
 - Prevent overlap by giving title rows, content grids, figures, captions, and footers explicit reserved regions.
 - For multi-figure slides, keep captions attached to each figure, reserve footer space, and make zoomed images fit within the viewport without covering navigation irreversibly.
+- If a slide exceeds density limits, split or continue the slide instead of reducing body text below the minimum readable size.
 
 ## Phase 5: Verification
 
@@ -309,6 +319,7 @@ Verify before delivery:
 - Every non-decorative image comes from the approved image inventory or an explicitly approved custom diagram.
 - Use `scripts/check_html_deck.py` for static resource/style audit. Static checks cannot prove visual non-overlap.
 - Use `scripts/verify_rendered_deck.py` or another browser-render check when available to inspect screenshots, DOM boxes, image loading, overflow, and font drift.
+- Treat `title-content-overlap`, `footer-content-overlap`, `dense-text-risk`, `bullet-density-risk`, `multi-figure-density-risk`, and `content-central-band-risk` warnings as layout failures that need revision unless a screenshot review proves the warning is harmless.
 - Titles do not collide, truncate, or wrap into unreadable blocks.
 - Body text is not too small for a projected doctoral proposal or defense. If text feels small, increase font size and line spacing, then redistribute layout.
 - Text does not overlap, overflow, or sit in a narrow column with unused empty space elsewhere.
@@ -357,6 +368,7 @@ This is a direct-install skill package. Keep the installed skill lean: `SKILL.md
 
 - `agents/openai.yaml` is optional UI metadata for skill lists and default prompts; it is not a runtime dependency.
 - Read [references/research-html-requirements.md](references/research-html-requirements.md) when building or substantially redesigning a research HTML presentation.
+- Read [references/layout-safety-and-style-fingerprint.md](references/layout-safety-and-style-fingerprint.md) when layout crowding, overlap, or personal style fidelity is a known risk.
 - Use `scripts/inspect_sources.py` to inspect PPTX, DOCX, HTML, LaTeX, and PDF sources/templates and optionally create reusable Markdown summaries.
 - Use `scripts/extract_style_profile.py` to turn a template, old deck, HTML file, PDF, PPTX, or screenshot folder into a compact style seed for the current task.
 - Use `scripts/update_style_memory.py` only after user approval or explicit long-term feedback wording. Its `--remove` option removes active `style_profile.json` entries only; it does not rewrite historical logs.
@@ -365,5 +377,6 @@ This is a direct-install skill package. Keep the installed skill lean: `SKILL.md
 - Use `scripts/check_html_deck.py` before delivery for static HTML/image/style checks, especially after prior failures involving missing figures, repeated figures, or overlap-prone CSS.
 - Use `scripts/verify_rendered_deck.py` for browser-rendered verification when visual overlap, screenshot evidence, print layout, or template fidelity matters.
 - Use `assets/templates/` for user-provided templates, starter HTML files, PPTX templates, CSS themes, logos, fonts, and recurring research visuals. Do not load all template assets into context; inspect only the relevant files. Do not redistribute commercial or system font files in any public wrapper repository.
+- Use `assets/layout_safety.css` as neutral layout guardrails when a generated HTML deck needs stronger protection against overlap, crowding, or footer/title collisions.
 - Use `assets/examples/` only when the user already has approved prior examples. The user is not required to manually build this folder; a current template, old deck, or screenshot can be used directly as the style seed.
 - Use `assets/style_memory/` for persistent user aesthetic preferences, negative preferences, and slide-role layout habits.

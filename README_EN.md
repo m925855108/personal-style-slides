@@ -39,6 +39,8 @@ Update local style memory only with approval
 - Preserves your slide rhythm, title habits, typography hierarchy, density, figure/text ratio, and caption style.
 - Supports traceable claims, figures, and source references for research and academic materials.
 - Generates browser-ready HTML slides with print/PDF-oriented checks.
+- Adds layout-safety guardrails for title/content/footer regions, density limits, and rendered overlap checks.
+- Compares lightweight style fingerprints so template drift is easier to spot.
 - Provides static checks, browser-render verification, lightweight style fingerprint comparison, and style memory update scripts.
 - Keeps private templates, unpublished figures, logos, comments, and style memory local by default.
 
@@ -169,11 +171,13 @@ These scripts are not a rigid checklist that you must run by hand every time. Th
 | `inspect_sources.py` | Inspects PPTX, DOCX, PDF, HTML, LaTeX, or screenshot folders and summarizes text, images, pages, and template metadata. | When source documents, templates, or asset folders are available. |
 | `extract_style_profile.py` | Extracts a compact style seed from a template, old deck, PDF, HTML deck, or screenshots. | Before generating or substantially revising a deck, so the agent can understand your style first. |
 | `check_html_deck.py` | Performs static checks for slide sections, image paths, repeated images, and risky CSS patterns. | After generating HTML, as a basic sanity check. |
-| `verify_rendered_deck.py` | Uses Playwright or a local browser for rendered checks, screenshots, and DOM box inspection. | When a browser or Playwright is available and rendered layout risk matters. |
-| `extract_style_fingerprint.py` | Extracts a lightweight style fingerprint from a style profile. | Before comparing a generated deck against a template style. |
-| `compare_style_fingerprint.py` | Compares two style fingerprints and reports matched or drifted traits. | To check whether colors, density, and layout habits roughly stayed close to the template. |
+| `verify_rendered_deck.py` | Uses Playwright or a local browser for rendered checks, screenshots, DOM boxes, density warnings, and title/content/footer collision checks. | When a browser or Playwright is available and rendered layout risk matters. |
+| `extract_style_fingerprint.py` | Extracts a lightweight style fingerprint with colors, font scale, density, image ratio, layout motifs, and CSS/class hints. | Before comparing a generated deck against a template style. |
+| `compare_style_fingerprint.py` | Compares two style fingerprints and reports matched traits, drifted traits, and manual-review items. | To check whether colors, density, image ratio, and layout habits roughly stayed close to the template. |
 | `update_style_memory.py` | Lists, appends, or removes local style memory entries. | Only when you explicitly want a preference remembered long term. |
 | `style_utils.py` | Internal helper functions shared by the other scripts. | Usually not run directly. |
+
+`assets/layout_safety.css` is not a theme. It is a neutral guardrail layer for reserved title/content/footer regions, viewport-safe images, and grid/flex constraints. You can adapt its spacing and colors to your template, but keeping the reserved regions makes crowded slides much less likely.
 
 ## What Runs Automatically
 
@@ -285,9 +289,9 @@ This repository publishes the skill framework, not private user content.
 - It generates HTML slides by default and does not directly generate editable `.pptx` files.
 - Style extraction is a compact style seed, not a complete visual reconstruction.
 - PPTX files can be used as templates and source materials, but the current implementation cannot guarantee high-fidelity reconstruction of PowerPoint layout, crops, animations, or all shape semantics.
-- Style fingerprint comparison is advisory and cannot prove visual similarity.
+- Style fingerprint comparison is advisory. It is a set of explainable personal-style traits, not a trained small model, and cannot prove visual similarity.
 - Static HTML checks cannot prove rendered non-overlap.
-- Browser-render verification depends on Playwright or a local browser; even when it passes, final screenshot review is still recommended.
+- Browser-render verification now checks more risk signals, including title/content/footer collisions, text density, multi-figure crowding, and central-band layouts. It still reduces risk rather than replacing final screenshot review.
 
 ## Credits
 

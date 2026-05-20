@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -31,6 +34,11 @@ FIREFOX_BROWSER_PATHS = [
     r"C:\Program Files\Mozilla Firefox\firefox.exe",
     "/Applications/Firefox.app/Contents/MacOS/firefox",
 ]
+
+MAX_TEXT_CHARS_PER_SLIDE = 950
+MAX_BULLETS_PER_SLIDE = 7
+MAX_VISIBLE_ITEMS_PER_SLIDE = 90
+MIN_CONTENT_VERTICAL_USE_RATIO = 0.42
 
 
 def file_url(path: Path) -> str:
@@ -81,6 +89,24 @@ def rect_overlap(a: dict, b: dict) -> bool:
     )
 
 
+def vertical_range(items: list[dict]) -> tuple[float, float] | None:
+    if not items:
+        return None
+    top = min(item["y"] for item in items)
+    bottom = max(item["y"] + item["height"] for item in items)
+    return top, bottom
+
+
+def overlaps_any(items_a: list[dict], items_b: list[dict]) -> list[dict]:
+    warnings = []
+    for a in items_a:
+        for b in items_b:
+            if rect_overlap(a, b):
+                warnings.append({"a": a, "b": b})
+                break
+    return warnings
+
+
 async def playwright_check(html: Path, out_dir: Path, width: int, height: int, max_slides: int | None) -> dict:
     from playwright.async_api import async_playwright  # type: ignore
 
@@ -126,14 +152,24 @@ async def playwright_check(html: Path, out_dir: Path, width: int, height: int, m
                   };
                   const root = Array.from(document.querySelectorAll('.active, .present, section.slide, section'))
                     .find(visible) || document.body;
+                  const roleFor = (el) => {
+                    const tag = el.tagName.toLowerCase();
+                    const cls = String(el.className || '').toLowerCase();
+                    if (tag === 'h1' || cls.includes('title') || cls.includes('headline')) return 'title';
+                    if (tag === 'footer' || cls.includes('footer') || cls.includes('slide-no') || cls.includes('page-number')) return 'footer';
+                    if (tag === 'img' || tag === 'svg' || tag === 'canvas') return 'figure';
+                    if (cls.includes('caption') || tag === 'figcaption') return 'caption';
+                    return 'content';
+                  };
                   const nodes = Array.from(root.querySelectorAll('h1,h2,h3,p,li,blockquote,pre,code,img,svg,canvas,table,.title,.content,.footer,.caption,.slide-no'));
                   const items = nodes.filter(visible).slice(0, 250).map((el) => {
                     const r = el.getBoundingClientRect();
                     const cs = getComputedStyle(el);
                     return {
+                      role: roleFor(el),
                       tag: el.tagName.toLowerCase(),
                       className: el.className ? String(el.className).slice(0,120) : '',
-                      text: (el.innerText || el.alt || '').replace(/\s+/g,' ').slice(0,120),
+                      text: (el.innerText || el.alt || '').replace(/\\s+/g,' ').slice(0,120),
                       x: r.x, y: r.y, width: r.width, height: r.height,
                       fontSize: cs.fontSize,
                       overflowX: el.scrollWidth > el.clientWidth + 2,
@@ -144,16 +180,54 @@ async def playwright_check(html: Path, out_dir: Path, width: int, height: int, m
                   });
                   const brokenImages = Array.from(root.querySelectorAll('img')).filter(img => !img.complete || img.naturalWidth === 0)
                     .map(img => img.src);
-                  return {items, brokenImages};
+                  const textChars = items
+                    .filter(item => ['title', 'content', 'caption'].includes(item.role))
+                    .reduce((sum, item) => sum + (item.text || '').length, 0);
+                  const bulletCount = items.filter(item => item.tag === 'li').length;
+                  const figureCount = items.filter(item => item.role === 'figure').length;
+                  return {items, brokenImages, textChars, bulletCount, figureCount};
                 }"""
             )
             warnings = []
             items = data["items"]
+            title_items = [i for i in items if i.get("role") == "title"]
+            footer_items = [i for i in items if i.get("role") == "footer"]
+            content_items = [i for i in items if i.get("role") in ("content", "figure", "caption")]
             for item in items:
                 if item["overflowX"] or item["overflowY"]:
                     warnings.append({"rule": "element-overflow", "item": item})
                 if item["x"] < -2 or item["y"] < -2 or item["x"] + item["width"] > width + 2 or item["y"] + item["height"] > height + 2:
                     warnings.append({"rule": "element-outside-viewport", "item": item})
+            for pair in overlaps_any(title_items, content_items):
+                warnings.append({"rule": "title-content-overlap", **pair})
+            for pair in overlaps_any(footer_items, content_items):
+                warnings.append({"rule": "footer-content-overlap", **pair})
+            content_range = vertical_range(content_items)
+            if content_range:
+                content_use = (content_range[1] - content_range[0]) / max(1, height)
+                if content_use < MIN_CONTENT_VERTICAL_USE_RATIO and data["textChars"] > 220:
+                    warnings.append(
+                        {
+                            "rule": "content-central-band-risk",
+                            "vertical_use_ratio": round(content_use, 3),
+                            "note": "Content occupies a narrow vertical band; consider spreading modules or splitting slides.",
+                        }
+                    )
+            if data["textChars"] > MAX_TEXT_CHARS_PER_SLIDE:
+                warnings.append({"rule": "dense-text-risk", "text_chars": data["textChars"], "limit": MAX_TEXT_CHARS_PER_SLIDE})
+            if data["bulletCount"] > MAX_BULLETS_PER_SLIDE:
+                warnings.append({"rule": "bullet-density-risk", "bullet_count": data["bulletCount"], "limit": MAX_BULLETS_PER_SLIDE})
+            if len(items) > MAX_VISIBLE_ITEMS_PER_SLIDE:
+                warnings.append({"rule": "many-visible-elements-risk", "item_count": len(items), "limit": MAX_VISIBLE_ITEMS_PER_SLIDE})
+            if data["figureCount"] >= 3 and data["textChars"] > 360:
+                warnings.append(
+                    {
+                        "rule": "multi-figure-density-risk",
+                        "figure_count": data["figureCount"],
+                        "text_chars": data["textChars"],
+                        "note": "Multi-figure slides with substantial text often need split slides or zoom interaction.",
+                    }
+                )
             key_items = [i for i in items if i["tag"] in ("h1", "h2", "h3", "p", "li", "img", "table", "svg", "canvas")]
             for a_i, a in enumerate(key_items):
                 for b in key_items[a_i + 1 :]:
@@ -165,7 +239,17 @@ async def playwright_check(html: Path, out_dir: Path, width: int, height: int, m
                             break
             for src in data["brokenImages"]:
                 warnings.append({"rule": "broken-image-rendered", "src": src})
-            report["slides"].append({"number": idx + 1, "screenshot": str(shot), "warnings": warnings, "item_count": len(items)})
+            report["slides"].append(
+                {
+                    "number": idx + 1,
+                    "screenshot": str(shot),
+                    "warnings": warnings,
+                    "item_count": len(items),
+                    "text_chars": data["textChars"],
+                    "bullet_count": data["bulletCount"],
+                    "figure_count": data["figureCount"],
+                }
+            )
         await browser.close()
     report["status"] = "warn" if any(s["warnings"] for s in report["slides"]) else "ok"
     return report

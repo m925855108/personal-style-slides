@@ -115,6 +115,7 @@ Before designing a new deck or substantial redesign, learn from the current styl
 - Run or emulate `scripts/extract_style_profile.py` to create a compact style summary for the current task.
 - Merge `assets/style_memory/` only when it does not conflict with the current style seed or current user instruction.
 - Do not require the user to manually organize examples or maintain a style library.
+- For PPTX style seeds, prefer the OOXML-derived font family, font size, and coarse geometry fields when available. These are style clues, not a promise of exact PowerPoint reconstruction.
 
 When several examples exist, select the closest 1-3 by:
 
@@ -174,6 +175,7 @@ Inspect user examples and templates before designing:
 - If `assets/templates/` contains exactly one plausible template, use it by default and state that choice.
 - If multiple plausible templates exist and the user did not name one, ask which template to use before final HTML. You may still draft content while waiting, but do not finalize style.
 - For PPTX templates, infer style from slide size, title/footer placement, colors, typography, recurring shapes, and sample slide screenshots if extraction tools are available.
+- When `scripts/inspect_sources.py` reports PPTX font typefaces, font sizes, or geometry summaries, use them to seed the type scale, title/content/footer placement, and layout fingerprint before falling back to generic academic defaults.
 - For LaTeX Beamer templates, infer style from theme declarations, color themes, title/frame commands, section structure, logo usage, and included figure patterns.
 - For HTML/CSS templates, reuse the layout grammar and CSS tokens directly where practical.
 - Treat approved user examples as the primary design source and templates as implementation sources. For each generated slide type, choose the closest prior example or template exemplar and adapt its structure before inventing a new layout.
@@ -251,6 +253,13 @@ Default 16:9 numeric constraints unless the template clearly requires otherwise:
 - For multi-figure slides, if a figure displays below 42% of content-region height, split the slide or add zoom interaction.
 - Do not reduce body font below the minimum to fit content; split the slide instead.
 
+Use the bundled layout baseline before writing slide-specific CSS:
+
+- Start from `assets/layout_safety.css`, `assets/unified-type-scale.css`, and `assets/unified-image-scale.css` for new decks or substantial redesigns.
+- Treat these files as guardrails, not a fixed theme. A user's approved template, current instructions, or accepted style memory may override values such as colors, spacing, and type scale.
+- Keep the variable names and role classes (`--ts-title`, `--ts-body`, `--img-full`, `.slide-title`, `.slide-content`, `.slide-footer`) even when values are customized. This lets static and rendered checks reason about typography and figure sizing.
+- Do not create per-slide ad hoc font sizes or image heights unless there is a documented scientific or template reason.
+
 If `assets/templates/` contains user templates, inspect the relevant template and reuse its only after checking whether approved user examples/style memory should override it:
 
 - aspect ratio and slide frame
@@ -264,6 +273,17 @@ If the output does not visibly follow the personal style contract, treat that as
 ## Phase 4: Build HTML Presentation
 
 Default to Reveal.js when the user wants a talk-ready academic presentation with notes, navigation, and PDF export. Use a self-contained HTML/CSS/JS structure when offline portability, custom animation, or no external dependencies matter more.
+
+Choose the HTML shell deliberately:
+
+| Shell | Use when | Required structure |
+| --- | --- | --- |
+| Reveal.js | The deck needs talk navigation, notes, print/PDF flow, or compatibility with common slide tooling. | Use `assets/slide-shell-reveal.html` as the slide skeleton. |
+| Custom HTML | The user prioritizes offline portability, custom transitions, or a non-Reveal visual system. | Use `assets/slide-shell-custom.html`; every slide must include `data-slide` so verification tools can enumerate slides. |
+
+Custom HTML is allowed, but it must preserve the same title/content/footer regions and type/image variables unless the user explicitly approves a different structure.
+
+These shells are starting constraints for reliable first generation. Later personalization may tune density, title placement, image scale, spacing, and motifs through the user's template or style memory. Do not remove the role variables or `data-slide`/slide region structure unless the user explicitly chooses a less verifiable custom layout and accepts the verification downgrade.
 
 Choose an output dependency mode:
 
@@ -289,7 +309,7 @@ Required features:
 Slide layout requirements:
 
 - Use a consistent slide shell: title region, content region, footer region.
-- For new decks or substantial redesigns, adapt `assets/layout_safety.css` or implement equivalent reserved title/content/footer regions before custom visual styling.
+- For new decks or substantial redesigns, adapt `assets/layout_safety.css`, `assets/unified-type-scale.css`, `assets/unified-image-scale.css`, and the relevant slide shell before custom visual styling.
 - Center content within the usable frame, not merely inside a card.
 - Evaluate where the text sits on the whole screen, not only whether a card is centered.
 - Avoid middle-band layouts where all text is compressed into a narrow horizontal strip with empty space above and below.
@@ -300,6 +320,7 @@ Slide layout requirements:
 - Split slides instead of shrinking text below readability.
 - Put the agenda on its own slide when needed. Do not crowd the title slide with an agenda, and do not add explanatory prose to a simple agenda slide.
 - Use one controlled type scale across the deck. Avoid per-slide ad hoc font sizes that cause visual jumps.
+- Use one controlled image scale across the deck. Prefer `--img-full`, `--img-half`, `--img-third`, and `--img-thumb` over one-off hardcoded image heights.
 - Avoid absolute-positioned text boxes for main content unless their bounding boxes are fixed and tested. Prefer CSS grid/flex with stable min/max constraints.
 - Keep `line-height`, margins, and card padding consistent for the same content role across all slides.
 - Prevent overlap by giving title rows, content grids, figures, captions, and footers explicit reserved regions.
@@ -318,8 +339,11 @@ Verify before delivery:
 - Style drift is reported when title/footer positions, color distribution, figure/text ratio, card/rule/sidebar motifs, typography scale, or caption style diverge from the selected examples.
 - Every non-decorative image comes from the approved image inventory or an explicitly approved custom diagram.
 - Use `scripts/check_html_deck.py` for static resource/style audit. Static checks cannot prove visual non-overlap.
+- For formal-build or a deck with prior layout failures, run `scripts/check_html_deck.py --strict-layout` so missing type/image variables, unreadably small font sizes, and excessive ad hoc sizing are treated as errors.
 - Use `scripts/verify_rendered_deck.py` or another browser-render check when available to inspect screenshots, DOM boxes, image loading, overflow, and font drift.
+- For custom HTML decks, use `scripts/verify_rendered_deck.py --generic-mode` and ensure every slide has `data-slide` or `.slide` markup. If generic mode still reports `verification-incomplete`, do not claim DOM overlap was verified.
 - Treat `title-content-overlap`, `footer-content-overlap`, `dense-text-risk`, `bullet-density-risk`, `multi-figure-density-risk`, and `content-central-band-risk` warnings as layout failures that need revision unless a screenshot review proves the warning is harmless.
+- Treat `verification-incomplete` and `screenshot-may-be-blank` as verification failures for formal-build until screenshots are manually reviewed or the markup is adjusted so the script can inspect DOM items.
 - Titles do not collide, truncate, or wrap into unreadable blocks.
 - Body text is not too small for a projected doctoral proposal or defense. If text feels small, increase font size and line spacing, then redistribute layout.
 - Text does not overlap, overflow, or sit in a narrow column with unused empty space elsewhere.
@@ -344,6 +368,14 @@ When a user-confirmed browser automation option is available, inspect representa
 - mismatch from the selected personal style examples
 
 If no browser is available, perform static CSS/HTML checks and tell the user what was not visually verified.
+
+Verification path:
+
+| Output structure | Preferred check | Downgrade note |
+| --- | --- | --- |
+| Reveal.js deck | `verify_rendered_deck.py` | If DOM items are zero, wait/retry or report verification incomplete. |
+| Custom HTML with `data-slide` / `.slide` | `verify_rendered_deck.py --generic-mode` | If DOM items are zero, screenshot evidence only; DOM overlap not verified. |
+| Custom HTML without stable slide markers | Static check plus manual screenshot review | Ask to add `data-slide` markers before claiming rendered verification. |
 
 ## Phase 6: Delivery
 
@@ -378,5 +410,8 @@ This is a direct-install skill package. Keep the installed skill lean: `SKILL.md
 - Use `scripts/verify_rendered_deck.py` for browser-rendered verification when visual overlap, screenshot evidence, print layout, or template fidelity matters.
 - Use `assets/templates/` for user-provided templates, starter HTML files, PPTX templates, CSS themes, logos, fonts, and recurring research visuals. Do not load all template assets into context; inspect only the relevant files. Do not redistribute commercial or system font files in any public wrapper repository.
 - Use `assets/layout_safety.css` as neutral layout guardrails when a generated HTML deck needs stronger protection against overlap, crowding, or footer/title collisions.
+- Use `assets/unified-type-scale.css` as the default controlled typography baseline. Users may personalize values, but generated decks should keep the variable names and role classes.
+- Use `assets/unified-image-scale.css` as the default controlled figure-size baseline. Users may personalize values, but generated decks should keep the variable names and role classes.
+- Use `assets/slide-shell-reveal.html` or `assets/slide-shell-custom.html` as copyable slide skeletons for new decks and substantial redesigns.
 - Use `assets/examples/` only when the user already has approved prior examples. The user is not required to manually build this folder; a current template, old deck, or screenshot can be used directly as the style seed.
 - Use `assets/style_memory/` for persistent user aesthetic preferences, negative preferences, and slide-role layout habits.

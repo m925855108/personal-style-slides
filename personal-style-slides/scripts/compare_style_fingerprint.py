@@ -55,7 +55,7 @@ def main(argv):
         "likely_acceptable_differences": [],
         "needs_manual_review": [],
     }
-    for key in ("dominant_colors", "font_tokens", "font_px_values", "layout_archetypes"):
+    for key in ("dominant_colors", "font_tokens", "font_px_values", "font_families", "layout_archetypes"):
         report["matched_traits"][key] = overlap(ref.get(key), gen.get(key))
         if report["matched_traits"][key]["score"] is not None and report["matched_traits"][key]["score"] < 0.35:
             report["drifted_traits"].append(key)
@@ -67,15 +67,15 @@ def main(argv):
     compare_image_ratio(ref_sig, gen_sig, report)
     for key in ("visual_density", "canvas"):
         compare_scalar(ref, gen, key, report)
-    for key in ("image_density", "has_rendered_references"):
+    for key in ("image_density", "geometry_available", "has_rendered_references"):
         compare_scalar(ref_sig, gen_sig, key, report)
     if not ref_sig.get("has_rendered_references"):
         report["likely_acceptable_differences"].append(
             "Reference fingerprint has no rendered slide screenshots; geometry similarity is approximate."
         )
     report["summary"] = (
-        "Style fingerprints are lightweight and rule-based. They compare colors, type scale, density, "
-        "layout motifs, and image ratio, but screenshots/manual review remain necessary for final style judgment."
+        "Style fingerprints are lightweight and rule-based. They compare colors, type scale, font families, density, "
+        "layout motifs, geometry availability, and image ratio, but screenshots/manual review remain necessary for final style judgment."
     )
     out = Path(args.out_json).resolve()
     write_json(out, report)

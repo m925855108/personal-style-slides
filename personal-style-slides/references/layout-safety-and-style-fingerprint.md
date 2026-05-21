@@ -38,8 +38,29 @@ Rules:
 - For multi-figure pages, prefer split slides or zoom interaction when each
   figure becomes too small.
 
-The bundled `assets/layout_safety.css` provides neutral guardrails. It is not a
-visual theme. Adapt it to the user's template colors and motifs.
+The bundled `assets/layout_safety.css` provides neutral guardrails. Pair it with
+`assets/unified-type-scale.css`, `assets/unified-image-scale.css`, and one of
+the shell snippets in `assets/slide-shell-*.html` for new decks.
+
+These files are not a visual theme. Adapt colors, spacing, type scale, and image
+scale to the user's approved template or long-term style memory, but keep the
+role variables and class names so checks can still understand the deck.
+
+## Customizable Baseline
+
+The layout baseline should be strict about roles, not about one fixed look:
+
+- Keep typography roles: `--ts-title`, `--ts-subtitle`, `--ts-body`,
+  `--ts-caption`, `--ts-footnote`.
+- Keep image roles: `--img-full`, `--img-half`, `--img-third`, `--img-thumb`.
+- Keep slide regions: title, content, footer/page number.
+- Override variable values when the user's personal style requires different
+  scale, density, or spacing.
+- Document intentional overrides in delivery notes when they exceed the default
+  readability thresholds.
+
+This lets a user's style mature over time without losing machine-checkable
+layout structure.
 
 ## Density Thresholds
 
@@ -57,6 +78,19 @@ supports a different density:
 If a threshold is exceeded, split the slide, create a continuation slide, or add
 an approved zoom interaction. Do not silently shrink text.
 
+## Static Preflight Signals
+
+Use `scripts/check_html_deck.py --strict-layout` for formal-builds or after
+prior layout failures. Treat these as build failures unless the deviation is an
+explicit user-approved style override:
+
+- `missing-type-scale-variables`
+- `missing-image-scale-variables`
+- `minimum-font-size`
+- `font-size-variance`
+- `image-height-variance`
+- `custom-slide-unmarked`
+
 ## Rendered Verification Signals
 
 Use `scripts/verify_rendered_deck.py` when available. Treat these warnings as
@@ -70,9 +104,23 @@ actionable:
 - `bullet-density-risk`
 - `multi-figure-density-risk`
 - `content-central-band-risk`
+- `verification-incomplete`
+- `screenshot-may-be-blank`
 
 If Playwright is unavailable and only screenshot fallback ran, say that DOM
 overlap was not verified.
+
+For custom HTML decks, prefer:
+
+```bash
+python scripts/verify_rendered_deck.py deck.html --generic-mode
+```
+
+Generic mode looks for `[data-slide]`, `.slide`, and `section` elements rather
+than assuming a Reveal.js deck. If it still reports `verification-incomplete`,
+the screenshot may exist but DOM overlap checks did not run. In formal-build,
+fix the markup or manually review screenshots before claiming the deck is
+visually verified.
 
 ## Personal Style Fingerprint
 
@@ -83,10 +131,11 @@ Extract and compare:
 
 - canvas and slide count
 - dominant colors
-- font tokens and font pixel values
+- font tokens, font families, and font pixel values
 - visual density
 - image-per-slide ratio
 - layout archetypes and layout motifs
+- coarse PPTX geometry availability and summaries when OOXML data is available
 - CSS variable and class-name hints
 - whether rendered reference screenshots were available
 
@@ -110,3 +159,24 @@ Before there is enough feedback history, prefer this order:
 This is closer to personal fingerprint recognition than to training a small
 model. A small model may be useful later, but the first reliable layer should be
 deterministic, inspectable, and easy to correct.
+
+## PPTX OOXML Style Clues
+
+When PPTX files are used as style seeds, `scripts/inspect_sources.py` may report:
+
+- `font_typefaces`
+- `font_sizes_pt`
+- `text_styles`
+- `geometry_summary`
+- per-slide `geometry_samples`
+
+Use these fields as hints for the first style contract:
+
+- font family and type scale
+- title/content/footer placement
+- common shape sizes and visual rhythm
+- whether the template uses sidebar, footer, or motif-heavy geometry
+
+Do not describe this as full PPTX reconstruction. OOXML geometry helps the
+initial fingerprint, but screenshots and user feedback remain the authority for
+personal style.

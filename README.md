@@ -178,7 +178,7 @@ examples_demo/demo_template_seed/run_output/
 | 脚本 | 做什么 | 常见时机 |
 | --- | --- | --- |
 | `doctor.py` | 检查 Python、浏览器、LibreOffice、PyMuPDF、Playwright 等环境能力。 | 安装后、脚本失败、浏览器验证不可用。 |
-| `inspect_sources.py` | 检查 PPTX、DOCX、PDF、HTML、LaTeX 或截图目录里的文字、图片、页面和模板信息。 | 有源文档、模板或素材目录时。 |
+| `inspect_sources.py` | 检查 PPTX、DOCX、PDF、HTML、LaTeX 或截图目录里的文字、图片、页面和模板信息；PPTX 会尝试提取字体、字号和粗略几何线索。 | 有源文档、模板或素材目录时。 |
 | `extract_style_profile.py` | 从模板、旧 deck、PDF、HTML 或截图里提取紧凑风格种子。 | 生成或大改 deck 前。 |
 | `check_html_deck.py` | 静态检查 HTML slides 的 section、图片路径、重复图片和风险 CSS。 | 生成 HTML 后。 |
 | `verify_rendered_deck.py` | 用 Playwright 或本地浏览器做渲染检查、截图和 DOM box 检查。 | 布局风险较高，或需要截图证据时。 |
@@ -189,6 +189,8 @@ examples_demo/demo_template_seed/run_output/
 
 `assets/layout_safety.css` 不是主题模板，而是一组中性的版式安全护栏：标题区、内容区、页脚区预留空间，限制图片高度，并用 grid/flex 减少 HTML slide 里常见的拥挤和遮挡。正式做 deck 时可以按你的模板风格改色、改间距，但不建议删掉这些安全边界。
 
+对自定义 HTML，`verify_rendered_deck.py --generic-mode` 可以减少“不是 Reveal.js 就无法验证”的问题；如果报告 `verification-incomplete`，说明截图可能有了，但 DOM 重叠检查没有真正完成。
+
 手动跑几个常见检查：
 
 ```bash
@@ -197,6 +199,14 @@ python personal-style-slides/scripts/extract_style_profile.py personal-style-sli
 python personal-style-slides/scripts/check_html_deck.py outputs/index.html
 python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
 ```
+
+如果输出是自定义 HTML，而不是 Reveal.js deck，渲染检查建议加：
+
+```bash
+python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --generic-mode --out-dir render_check
+```
+
+`--generic-mode` 会用 `[data-slide]` / `.slide` / `section` 来枚举页面。它是为了让个性化 HTML 也能被检查，不是要求所有 deck 都必须长成 Reveal.js。
 
 ## 配置和依赖
 

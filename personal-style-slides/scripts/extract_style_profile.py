@@ -47,6 +47,9 @@ def build_profile(items):
     colors = []
     font_sizes = []
     css_vars = []
+    font_families = []
+    font_typefaces = []
+    geometry_summaries = []
     classes = []
     slide_count = 0
     image_count = 0
@@ -65,6 +68,7 @@ def build_profile(items):
             tokens = item.get("style_tokens", {})
             colors += tokens.get("colors", [])
             font_sizes += tokens.get("font_sizes", [])
+            font_families += tokens.get("font_families", [])
             css_vars += tokens.get("css_variables", [])
             classes += [name for name, _ in item.get("top_classes", [])]
         elif kind == "pptx":
@@ -72,6 +76,13 @@ def build_profile(items):
             image_count += len(item.get("media", []))
             colors += item.get("theme_colors", [])
             canvas = item.get("slide_size") or canvas
+            font_sizes += [f"{size}pt" for size in item.get("font_sizes_pt", [])]
+            font_typefaces += item.get("font_typefaces", [])
+            if item.get("geometry_summary"):
+                geometry_summaries.append(item["geometry_summary"])
+            for layout in item.get("layouts", []):
+                if layout.get("geometry_summary"):
+                    geometry_summaries.append(layout["geometry_summary"])
             classes += [layout.get("layout_name") or layout.get("name") for layout in item.get("layouts", [])]
             text_preview += " ".join(s.get("text_preview", "") for s in item.get("slides", [])[:12])
         elif kind == "latex":
@@ -92,6 +103,7 @@ def build_profile(items):
 
     top_colors = top_items(colors, 18)
     top_fonts = top_items(font_sizes, 16)
+    top_font_families = top_items(font_families + font_typefaces, 16)
     layouts = classify_layout(classes, slide_count, image_count)
     profile = {
         "profile_kind": "auto_style_profile",
@@ -103,13 +115,17 @@ def build_profile(items):
         "dominant_colors": top_colors,
         "font_size_tokens": top_fonts,
         "font_px_values": extract_css_px_values(font_sizes),
+        "font_families": top_font_families,
         "css_variables": top_items(css_vars, 30),
         "layout_archetypes": layouts,
+        "geometry_summaries": geometry_summaries[:12],
         "style_contract": {
             "imitate": [
                 "canvas ratio and slide shell",
                 "title/footer/page-number placement",
                 "dominant colors and accent usage",
+                "font families and font scale when detected",
+                "major title/content/footer geometry when detected",
                 "layout archetypes and figure/text rhythm",
                 "figure and caption treatment visible in the seed",
             ],
@@ -139,6 +155,7 @@ def to_markdown(profile):
         f"- Visual density: {profile.get('visual_density')}",
         f"- Dominant colors: {markdown_list(profile.get('dominant_colors', []))}",
         f"- Font size tokens: {markdown_list(profile.get('font_size_tokens', []))}",
+        f"- Font families: {markdown_list(profile.get('font_families', []))}",
         f"- Layout archetypes: {markdown_list(profile.get('layout_archetypes', []))}",
         "",
         "## Imitate",

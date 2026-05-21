@@ -22,6 +22,8 @@ class DeckParser(html.parser.HTMLParser):
         self.images = []
         self.links = []
         self.sections = 0
+        self.data_slides = 0
+        self.slide_class_nodes = 0
         self.style_blocks = []
         self._in_style = False
         self._style_buf = []
@@ -34,6 +36,10 @@ class DeckParser(html.parser.HTMLParser):
             self.links.append({"href": attrs.get("href", ""), "rel": attrs.get("rel", "")})
         if tag == "section":
             self.sections += 1
+        if attrs.get("data-slide") is not None:
+            self.data_slides += 1
+        if "slide" in str(attrs.get("class", "")).split():
+            self.slide_class_nodes += 1
         if tag == "style":
             self._in_style = True
             self._style_buf = []
@@ -73,6 +79,101 @@ def risky_css(css: str) -> list[dict]:
     return out
 
 
+def css_number(value: str) -> float | None:
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def font_size_audit(css: str, strict: bool = False) -> tuple[list[dict], list[dict], dict]:
+    required_vars = ["--ts-title", "--ts-subtitle", "--ts-body", "--ts-caption", "--ts-footnote"]
+    found_vars = {name for name in required_vars if re.search(rf"{re.escape(name)}\s*:", css)}
+    missing_vars = [name for name in required_vars if name not in found_vars]
+    px_values = [css_number(v) for v in re.findall(r"font-size\s*:\s*([0-9.]+)px", css, flags=re.I)]
+    px_values = [v for v in px_values if v is not None]
+    unique_px = sorted(set(round(v, 2) for v in px_values))
+    errors = []
+    warnings = []
+    if missing_vars and strict:
+        errors.append(
+            {
+                "severity": "error",
+                "rule": "missing-type-scale-variables",
+                "message": missing_vars,
+            }
+        )
+    too_small = sorted(set(v for v in unique_px if v < 14))
+    if too_small:
+        target = errors if strict else warnings
+        target.append(
+            {
+                "severity": "error" if strict else "warn",
+                "rule": "minimum-font-size",
+                "message": f"Font sizes below 14px detected: {too_small}",
+            }
+        )
+    if len(unique_px) > 9:
+        target = errors if strict else warnings
+        target.append(
+            {
+                "severity": "error" if strict else "warn",
+                "rule": "font-size-variance",
+                "message": f"{len(unique_px)} unique raw px font sizes detected. Prefer unified type variables.",
+                "values": unique_px[:30],
+            }
+        )
+    elif len(unique_px) > 6:
+        warnings.append(
+            {
+                "severity": "warn",
+                "rule": "font-size-variance",
+                "message": f"{len(unique_px)} unique raw px font sizes detected.",
+                "values": unique_px[:30],
+            }
+        )
+    return errors, warnings, {"required_variables": required_vars, "missing_variables": missing_vars, "unique_px_values": unique_px}
+
+
+def image_size_audit(css: str, strict: bool = False) -> tuple[list[dict], list[dict], dict]:
+    required_vars = ["--img-full", "--img-half", "--img-third"]
+    found_vars = {name for name in required_vars if re.search(rf"{re.escape(name)}\s*:", css)}
+    missing_vars = [name for name in required_vars if name not in found_vars]
+    height_tokens = re.findall(r"(?:height|max-height)\s*:\s*([^;}{]+)", css, flags=re.I)
+    normalized = sorted(set(re.sub(r"\s+", " ", token.strip()) for token in height_tokens if token.strip()))
+    errors = []
+    warnings = []
+    if missing_vars and strict:
+        errors.append(
+            {
+                "severity": "error",
+                "rule": "missing-image-scale-variables",
+                "message": missing_vars,
+            }
+        )
+    ad_hoc = [token for token in normalized if not token.startswith("var(--img") and "100vh" not in token and "100dvh" not in token]
+    if len(ad_hoc) > 6:
+        target = errors if strict else warnings
+        target.append(
+            {
+                "severity": "error" if strict else "warn",
+                "rule": "image-height-variance",
+                "message": f"{len(ad_hoc)} non-standard image/height tokens detected. Prefer unified image variables.",
+                "values": ad_hoc[:30],
+            }
+        )
+    elif len(ad_hoc) > 4:
+        warnings.append(
+            {
+                "severity": "warn",
+                "rule": "image-height-variance",
+                "message": f"{len(ad_hoc)} non-standard image/height tokens detected.",
+                "values": ad_hoc[:30],
+            }
+        )
+    return errors, warnings, {"required_variables": required_vars, "missing_variables": missing_vars, "height_tokens": normalized[:50]}
+
+
 def collect_manifest_images(path: Path | None) -> set[str]:
     if not path or not path.exists():
         return set()
@@ -102,6 +203,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("html", help="Generated HTML deck path.")
     parser.add_argument("--manifest-json", help="Optional source inspection JSON to compare image use.")
     parser.add_argument("--out-json", help="Write check report JSON.")
+    parser.add_argument("--strict-layout", action="store_true", help="Treat missing layout/type/image guardrails as errors.")
     args = parser.parse_args(argv)
 
     html_path = Path(args.html).resolve()
@@ -139,8 +241,11 @@ def main(argv: list[str]) -> int:
     used_names = {Path(src).name.lower() for src in local_images}
     manifest_unused = sorted(manifest_images - used_names)[:100] if manifest_images else []
     css = "\n".join(parser_obj.style_blocks)
-    if parser_obj.sections == 0:
-        errors.append({"severity": "error", "rule": "zero-slide-sections", "message": "No section elements found."})
+    slide_like_count = max(parser_obj.sections, parser_obj.data_slides, parser_obj.slide_class_nodes)
+    if slide_like_count == 0:
+        errors.append({"severity": "error", "rule": "zero-slide-sections", "message": "No section, data-slide, or .slide elements found."})
+    elif parser_obj.sections == 0 and parser_obj.data_slides == 0:
+        warnings.append({"severity": "warn", "rule": "custom-slide-unmarked", "message": "Slides appear to use custom HTML; add data-slide attributes for generic render verification."})
     for src in missing:
         errors.append({"severity": "error", "rule": "missing-local-image", "message": src})
     for item in repeated:
@@ -151,15 +256,27 @@ def main(argv: list[str]) -> int:
         warnings.append({"severity": "warn", "rule": "large-data-uri-image", "message": f"{large_data_uri_count} data URI image(s) exceed 1MB."})
     for name in manifest_unused:
         warnings.append({"severity": "warn", "rule": "manifest-image-unused", "message": name})
+    font_errors, font_warnings, font_report = font_size_audit(css, args.strict_layout)
+    image_errors, image_warnings, image_report = image_size_audit(css, args.strict_layout)
+    errors.extend(font_errors)
+    errors.extend(image_errors)
+    warnings.extend(font_warnings)
+    warnings.extend(image_warnings)
     info.extend(risky_css(css))
     report = {
         "html": str(html_path),
         "sections": parser_obj.sections,
+        "data_slide_count": parser_obj.data_slides,
+        "slide_class_count": parser_obj.slide_class_nodes,
+        "slide_like_count": slide_like_count,
         "image_count": len(parser_obj.images),
         "local_image_count": len(local_images),
         "missing_images": missing,
         "repeated_images": repeated,
         "manifest_unused_image_names": manifest_unused,
+        "font_size_audit": font_report,
+        "image_size_audit": image_report,
+        "strict_layout": args.strict_layout,
         "errors": errors,
         "warnings": warnings,
         "info": info,

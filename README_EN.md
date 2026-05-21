@@ -159,6 +159,14 @@ python personal-style-slides/scripts/check_html_deck.py outputs/index.html
 python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --out-dir render_check
 ```
 
+For custom HTML decks that are not Reveal.js decks, use:
+
+```bash
+python personal-style-slides/scripts/verify_rendered_deck.py outputs/index.html --generic-mode --out-dir render_check
+```
+
+`--generic-mode` enumerates slides through `[data-slide]`, `.slide`, and `section`. It exists so personalized HTML can still be checked; it does not force every deck to use Reveal.js.
+
 `extract_style_profile.py` produces a compact style seed, not a complete visual reconstruction. Final style judgment still requires screenshots and manual review.
 
 ## Included Helper Scripts
@@ -168,7 +176,7 @@ These scripts are not a rigid checklist that you must run by hand every time. Th
 | Script | Purpose | Typical use |
 | --- | --- | --- |
 | `doctor.py` | Checks Python, browser, LibreOffice, PyMuPDF, Playwright, and related environment capabilities. | After installation, when scripts fail, or when browser verification is unavailable. |
-| `inspect_sources.py` | Inspects PPTX, DOCX, PDF, HTML, LaTeX, or screenshot folders and summarizes text, images, pages, and template metadata. | When source documents, templates, or asset folders are available. |
+| `inspect_sources.py` | Inspects PPTX, DOCX, PDF, HTML, LaTeX, or screenshot folders and summarizes text, images, pages, and template metadata; PPTX inspection also tries to extract font, size, and coarse geometry clues. | When source documents, templates, or asset folders are available. |
 | `extract_style_profile.py` | Extracts a compact style seed from a template, old deck, PDF, HTML deck, or screenshots. | Before generating or substantially revising a deck, so the agent can understand your style first. |
 | `check_html_deck.py` | Performs static checks for slide sections, image paths, repeated images, and risky CSS patterns. | After generating HTML, as a basic sanity check. |
 | `verify_rendered_deck.py` | Uses Playwright or a local browser for rendered checks, screenshots, DOM boxes, density warnings, and title/content/footer collision checks. | When a browser or Playwright is available and rendered layout risk matters. |
@@ -178,6 +186,8 @@ These scripts are not a rigid checklist that you must run by hand every time. Th
 | `style_utils.py` | Internal helper functions shared by the other scripts. | Usually not run directly. |
 
 `assets/layout_safety.css` is not a theme. It is a neutral guardrail layer for reserved title/content/footer regions, viewport-safe images, and grid/flex constraints. You can adapt its spacing and colors to your template, but keeping the reserved regions makes crowded slides much less likely.
+
+For custom HTML, `verify_rendered_deck.py --generic-mode` reduces the risk that a non-Reveal deck cannot be checked. If the report says `verification-incomplete`, screenshots may exist, but DOM overlap checks did not actually complete.
 
 ## What Runs Automatically
 

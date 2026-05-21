@@ -12,7 +12,7 @@ import extract_style_profile
 from style_utils import write_json
 
 
-FINGERPRINT_VERSION = "0.2"
+FINGERPRINT_VERSION = "0.3"
 
 
 def bucket_number(value: float | int | None, buckets: list[tuple[float, str]]) -> str | None:
@@ -27,6 +27,9 @@ def bucket_number(value: float | int | None, buckets: list[tuple[float, str]]) -
 def collect_raw_traits(profile: dict) -> dict:
     classes = []
     css_variables = []
+    font_families = []
+    font_typefaces = []
+    geometry_hints = []
     theme_layouts = []
     page_renders = 0
     raw_items = profile.get("raw_inspection", {}).get("items", [])
@@ -35,18 +38,27 @@ def collect_raw_traits(profile: dict) -> dict:
         if kind == "html":
             classes.extend(name for name, _count in item.get("top_classes", []))
             css_variables.extend(item.get("style_tokens", {}).get("css_variables", []))
+            font_families.extend(item.get("style_tokens", {}).get("font_families", []))
         elif kind == "pptx":
             theme_layouts.extend(
                 (layout.get("layout_name") or layout.get("name") or "")
                 for layout in item.get("layouts", [])
             )
+            font_typefaces.extend(item.get("font_typefaces", []))
+            if item.get("geometry_summary"):
+                geometry_hints.append(item["geometry_summary"])
+            for layout in item.get("layouts", []):
+                if layout.get("geometry_summary"):
+                    geometry_hints.append(layout["geometry_summary"])
             page_renders += len(item.get("page_renders", []))
         elif kind == "pdf":
             page_renders += len(item.get("page_renders", []))
     return {
         "top_classes": sorted(set(filter(None, classes)))[:24],
         "css_variables": sorted(set(filter(None, css_variables)))[:24],
+        "font_families": sorted(set(filter(None, font_families + font_typefaces)))[:24],
         "template_layout_names": sorted(set(filter(None, theme_layouts)))[:24],
+        "geometry_hints": geometry_hints[:12],
         "rendered_reference_pages": page_renders,
     }
 
@@ -88,6 +100,7 @@ def derive_layout_signature(profile: dict, raw_traits: dict) -> dict:
         "image_per_slide": ratio["image_per_slide"],
         "layout_archetypes": archetypes,
         "layout_motifs": motifs[:20],
+        "geometry_available": bool(profile.get("geometry_summaries") or raw_traits.get("geometry_hints")),
         "has_rendered_references": bool(raw_traits.get("rendered_reference_pages")),
     }
 
@@ -114,7 +127,9 @@ def main(argv):
         "dominant_colors": profile.get("dominant_colors", [])[:12],
         "font_tokens": profile.get("font_size_tokens", [])[:12],
         "font_px_values": profile.get("font_px_values", [])[:12],
+        "font_families": profile.get("font_families", [])[:12],
         "layout_archetypes": profile.get("layout_archetypes", []),
+        "geometry_summaries": profile.get("geometry_summaries", [])[:8],
         "layout_signature": layout_signature,
         "raw_trait_hints": raw_traits,
         "notes": [

@@ -47,6 +47,7 @@ class HtmlSummaryParser(html.parser.HTMLParser):
         self.links = []
         self.sections = 0
         self.classes = {}
+        self.inline_styles = []
         self.style_blocks = []
         self._in_style = False
         self._style_buf = []
@@ -62,6 +63,8 @@ class HtmlSummaryParser(html.parser.HTMLParser):
         if attrs.get("class"):
             for cls in attrs["class"].split():
                 self.classes[cls] = self.classes.get(cls, 0) + 1
+        if attrs.get("style"):
+            self.inline_styles.append(attrs["style"])
         if tag == "style":
             self._in_style = True
             self._style_buf = []
@@ -81,9 +84,11 @@ def inspect_html(path: Path) -> dict:
     parser = HtmlSummaryParser()
     parser.feed(text)
     css = "\n".join(parser.style_blocks)
+    style_text = css + "\n" + "\n".join(parser.inline_styles)
     colors = sorted(set(re.findall(r"#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)", css)))[:80]
-    font_sizes = sorted(set(re.findall(r"font-size\s*:\s*[^;}{]+", css)))[:80]
-    variables = sorted(set(re.findall(r"--[-\w]+\s*:\s*[^;}{]+", css)))[:120]
+    font_sizes = sorted(set(re.findall(r"font-size\s*:\s*[^;}{]+", style_text, flags=re.I)))[:100]
+    font_families = sorted(set(re.findall(r"font-family\s*:\s*[^;}{]+", style_text, flags=re.I)))[:80]
+    variables = sorted(set(re.findall(r"--[-\w]+\s*:\s*[^;}{]+", style_text)))[:140]
     top_classes = sorted(parser.classes.items(), key=lambda kv: (-kv[1], kv[0]))[:50]
     compact_images = []
     for img in parser.images[:200]:
@@ -99,7 +104,7 @@ def inspect_html(path: Path) -> dict:
         "images": compact_images,
         "links": parser.links[:100],
         "top_classes": top_classes,
-        "style_tokens": {"colors": colors, "font_sizes": font_sizes, "css_variables": variables},
+        "style_tokens": {"colors": colors, "font_sizes": font_sizes, "font_families": font_families, "css_variables": variables},
     }
 
 
@@ -107,6 +112,119 @@ def xml_text(blob: bytes) -> str:
     text = blob.decode("utf-8", errors="ignore")
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def emu_to_px(value: str | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        return round(int(value) / 9525, 2)
+    except Exception:
+        return None
+
+
+def local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def text_from_element(el: ET.Element) -> str:
+    parts = []
+    for child in el.iter():
+        if local_name(child.tag) == "t" and child.text:
+            parts.append(child.text)
+    return re.sub(r"\s+", " ", " ".join(parts)).strip()
+
+
+def extract_ooxml_text_styles(root: ET.Element, limit: int = 120) -> list[dict]:
+    styles = []
+    for rpr in root.iter():
+        if local_name(rpr.tag) != "rPr":
+            continue
+        rec = {}
+        if rpr.attrib.get("sz"):
+            try:
+                pt = int(rpr.attrib["sz"]) / 100
+                rec["size_pt"] = round(pt, 2)
+                rec["size_px_96dpi"] = round(pt * 96 / 72, 2)
+            except Exception:
+                pass
+        if rpr.attrib.get("b") is not None:
+            rec["bold"] = rpr.attrib.get("b")
+        if rpr.attrib.get("i") is not None:
+            rec["italic"] = rpr.attrib.get("i")
+        typefaces = []
+        for child in rpr:
+            if local_name(child.tag) in ("latin", "ea", "cs") and child.attrib.get("typeface"):
+                typefaces.append(child.attrib["typeface"])
+        if typefaces:
+            rec["typefaces"] = sorted(set(typefaces))
+        if rec:
+            styles.append(rec)
+        if len(styles) >= limit:
+            break
+    return styles
+
+
+def extract_ooxml_geometry(root: ET.Element, limit: int = 160) -> list[dict]:
+    records = []
+    for el in root.iter():
+        lname = local_name(el.tag)
+        if lname not in ("sp", "pic", "graphicFrame"):
+            continue
+        rec = {"kind": lname}
+        for child in el.iter():
+            child_name = local_name(child.tag)
+            if child_name == "cNvPr":
+                if child.attrib.get("name"):
+                    rec["name"] = child.attrib.get("name")
+                break
+        text = text_from_element(el)
+        if text:
+            rec["text_preview"] = text[:120]
+        for xfrm in el.iter():
+            if local_name(xfrm.tag) != "xfrm":
+                continue
+            off = None
+            ext = None
+            for child in xfrm:
+                if local_name(child.tag) == "off":
+                    off = child
+                elif local_name(child.tag) == "ext":
+                    ext = child
+            if off is not None:
+                rec["x_px"] = emu_to_px(off.attrib.get("x"))
+                rec["y_px"] = emu_to_px(off.attrib.get("y"))
+            if ext is not None:
+                rec["w_px"] = emu_to_px(ext.attrib.get("cx"))
+                rec["h_px"] = emu_to_px(ext.attrib.get("cy"))
+            break
+        if any(key in rec for key in ("x_px", "y_px", "w_px", "h_px", "text_preview")):
+            records.append(rec)
+        if len(records) >= limit:
+            break
+    return records
+
+
+def summarize_geometry(records: list[dict]) -> dict:
+    if not records:
+        return {"count": 0}
+    xs = [r["x_px"] for r in records if isinstance(r.get("x_px"), (int, float))]
+    ys = [r["y_px"] for r in records if isinstance(r.get("y_px"), (int, float))]
+    ws = [r["w_px"] for r in records if isinstance(r.get("w_px"), (int, float))]
+    hs = [r["h_px"] for r in records if isinstance(r.get("h_px"), (int, float))]
+
+    def spread(values):
+        if not values:
+            return None
+        return {"min": min(values), "max": max(values), "median": sorted(values)[len(values) // 2]}
+
+    return {
+        "count": len(records),
+        "x_px": spread(xs),
+        "y_px": spread(ys),
+        "w_px": spread(ws),
+        "h_px": spread(hs),
+    }
 
 
 def render_pptx_with_libreoffice(path: Path, render_dir: Path) -> dict:
@@ -141,7 +259,20 @@ def render_pptx_with_libreoffice(path: Path, render_dir: Path) -> dict:
 
 
 def inspect_pptx(path: Path, render_dir: Path | None = None) -> dict:
-    out = {"kind": "pptx", "file": file_record(path), "slide_size": None, "slides": [], "media": [], "layouts": [], "masters": [], "theme_colors": []}
+    out = {
+        "kind": "pptx",
+        "file": file_record(path),
+        "slide_size": None,
+        "slides": [],
+        "media": [],
+        "layouts": [],
+        "masters": [],
+        "theme_colors": [],
+        "text_styles": [],
+        "font_typefaces": [],
+        "font_sizes_pt": [],
+        "geometry_summary": {},
+    }
     with zipfile.ZipFile(path) as z:
         names = z.namelist()
         for name in names:
@@ -163,14 +294,29 @@ def inspect_pptx(path: Path, render_dir: Path | None = None) -> dict:
                 if el.tag.endswith("cSld"):
                     title = el.attrib.get("name", "")
                     break
-            out["layouts"].append({"name": name, "layout_name": title, "shape_count": shape_count, "picture_count": pic_count})
+            styles = extract_ooxml_text_styles(root, 60)
+            geometry = extract_ooxml_geometry(root, 80)
+            out["layouts"].append({
+                "name": name,
+                "layout_name": title,
+                "shape_count": shape_count,
+                "picture_count": pic_count,
+                "text_styles": styles[:20],
+                "geometry_summary": summarize_geometry(geometry),
+            })
+            out["text_styles"].extend(styles)
         for name in sorted(n for n in names if n.startswith("ppt/slideMasters/slideMaster") and n.endswith(".xml")):
             root = ET.fromstring(z.read(name))
+            styles = extract_ooxml_text_styles(root, 80)
+            geometry = extract_ooxml_geometry(root, 120)
             out["masters"].append({
                 "name": name,
                 "shape_count": sum(1 for el in root.iter() if el.tag.endswith("sp")),
                 "picture_count": sum(1 for el in root.iter() if el.tag.endswith("pic")),
+                "text_styles": styles[:24],
+                "geometry_summary": summarize_geometry(geometry),
             })
+            out["text_styles"].extend(styles)
         for name in sorted(n for n in names if n.startswith("ppt/theme/theme") and n.endswith(".xml")):
             root = ET.fromstring(z.read(name))
             for el in root.iter():
@@ -194,6 +340,8 @@ def inspect_pptx(path: Path, render_dir: Path | None = None) -> dict:
                     if "image" in rtype or target.startswith("../media/"):
                         images.append(target)
             root = ET.fromstring(z.read(slide_name))
+            styles = extract_ooxml_text_styles(root, 80)
+            geometry = extract_ooxml_geometry(root, 120)
             out["slides"].append({
                 "number": idx,
                 "text_preview": text[:800],
@@ -201,7 +349,23 @@ def inspect_pptx(path: Path, render_dir: Path | None = None) -> dict:
                 "shape_count": sum(1 for el in root.iter() if el.tag.endswith("sp")),
                 "picture_count": sum(1 for el in root.iter() if el.tag.endswith("pic")),
                 "graphic_frame_count": sum(1 for el in root.iter() if el.tag.endswith("graphicFrame")),
+                "text_styles": styles[:24],
+                "geometry_summary": summarize_geometry(geometry),
+                "geometry_samples": geometry[:20],
             })
+            out["text_styles"].extend(styles)
+        typefaces = []
+        sizes = []
+        for style in out["text_styles"]:
+            typefaces.extend(style.get("typefaces", []))
+            if style.get("size_pt") is not None:
+                sizes.append(style["size_pt"])
+        out["font_typefaces"] = sorted(set(typefaces))[:60]
+        out["font_sizes_pt"] = sorted(set(sizes))[:60]
+        all_geometry = []
+        for slide in out["slides"]:
+            all_geometry.extend(slide.get("geometry_samples", []))
+        out["geometry_summary"] = summarize_geometry(all_geometry)
     if render_dir:
         rendered = render_pptx_with_libreoffice(path, render_dir)
         out["page_renders"] = rendered.get("page_renders", [])
@@ -347,6 +511,12 @@ def to_markdown(report: dict) -> str:
                 lines += [f"- Rendered slide images: {len(item.get('page_renders', []))}"]
             if item.get("theme_colors"):
                 lines += ["- Theme colors: " + ", ".join(item["theme_colors"][:20])]
+            if item.get("font_typefaces"):
+                lines += ["- Font typefaces: " + ", ".join(item["font_typefaces"][:20])]
+            if item.get("font_sizes_pt"):
+                lines += ["- Font sizes (pt): " + ", ".join(str(x) for x in item["font_sizes_pt"][:20])]
+            if item.get("geometry_summary"):
+                lines += [f"- Geometry summary: {item.get('geometry_summary')}"]
         elif item["kind"] == "docx":
             lines += [f"- Paragraphs: {len(item.get('paragraphs', []))}", f"- Media assets: {len(item.get('media', []))}"]
         elif item["kind"] == "latex":

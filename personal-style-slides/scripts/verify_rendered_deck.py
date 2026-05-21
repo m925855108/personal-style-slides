@@ -107,51 +107,113 @@ def overlaps_any(items_a: list[dict], items_b: list[dict]) -> list[dict]:
     return warnings
 
 
-async def playwright_check(html: Path, out_dir: Path, width: int, height: int, max_slides: int | None) -> dict:
+async def wait_for_reveal_or_stable_page(page) -> list[str]:
+    warnings = []
+    try:
+        await page.wait_for_function(
+            """() => {
+              if (!window.Reveal) return true;
+              if (typeof Reveal.isReady === 'function') return Reveal.isReady();
+              return true;
+            }""",
+            timeout=3000,
+        )
+    except Exception:
+        warnings.append("Reveal.js readiness was not confirmed within 3s; continuing with rendered DOM as-is.")
+    try:
+        await page.wait_for_load_state("networkidle", timeout=3000)
+    except Exception:
+        warnings.append("Network-idle state was not reached within 3s; continuing after a short stabilization wait.")
+    await page.wait_for_timeout(250)
+    return warnings
+
+
+def slide_selector(generic_mode: bool) -> str:
+    if generic_mode:
+        return "[data-slide], .slide, section.slide, .reveal .slides section, main section, body > section, section"
+    return ".reveal .slides section, section.slide, [data-slide], main section, body > section, section"
+
+
+async def playwright_check(html: Path, out_dir: Path, width: int, height: int, max_slides: int | None, generic_mode: bool) -> dict:
     from playwright.async_api import async_playwright  # type: ignore
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = {"mode": "playwright", "viewport": {"width": width, "height": height}, "slides": [], "errors": [], "warnings": []}
+    selector = slide_selector(generic_mode)
+    report = {
+        "mode": "playwright-generic" if generic_mode else "playwright",
+        "viewport": {"width": width, "height": height},
+        "slide_selector": selector,
+        "slides": [],
+        "errors": [],
+        "warnings": [],
+    }
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1)
         await page.goto(file_url(html))
-        await page.wait_for_timeout(400)
+        report["warnings"].extend(await wait_for_reveal_or_stable_page(page))
         count = await page.evaluate(
-            """() => {
-              const sections = Array.from(document.querySelectorAll('.reveal .slides section, section.slide, main section, body > section, section'));
-              return sections.length || 1;
-            }"""
+            """(selector) => {
+              const unique = [];
+              const seen = new Set();
+              for (const el of document.querySelectorAll(selector)) {
+                if (!seen.has(el)) {
+                  seen.add(el);
+                  unique.push(el);
+                }
+              }
+              return unique.length || 1;
+            }""",
+            selector,
         )
         if max_slides:
             count = min(count, max_slides)
         for idx in range(count):
             await page.evaluate(
-                """(idx) => {
-                  if (window.Reveal && Reveal.slide) {
+                """({idx, selector, genericMode}) => {
+                  const unique = [];
+                  const seen = new Set();
+                  for (const el of document.querySelectorAll(selector)) {
+                    if (!seen.has(el)) {
+                      seen.add(el);
+                      unique.push(el);
+                    }
+                  }
+                  document.querySelectorAll('[data-verify-active="true"]').forEach(el => {
+                    el.removeAttribute('data-verify-active');
+                  });
+                  if (!genericMode && window.Reveal && Reveal.slide) {
                     Reveal.slide(idx);
+                    const active = Array.from(document.querySelectorAll('.reveal .slides section.present, .reveal .slides section.active'))[0];
+                    if (active) active.setAttribute('data-verify-active', 'true');
                   } else {
-                    const sections = Array.from(document.querySelectorAll('.reveal .slides section, section.slide, main section, body > section, section'));
-                    sections.forEach((s, i) => {
+                    unique.forEach((s, i) => {
                       s.style.display = i === idx ? '' : 'none';
                       s.classList.toggle('active', i === idx);
+                      s.classList.toggle('present', i === idx);
+                      if (i === idx) {
+                        s.setAttribute('data-verify-active', 'true');
+                      }
                     });
                   }
                 }""",
-                idx,
+                {"idx": idx, "selector": selector, "genericMode": generic_mode},
             )
             await page.wait_for_timeout(250)
             shot = out_dir / f"slide_{idx + 1:03d}.png"
             await page.screenshot(path=str(shot), full_page=True)
             data = await page.evaluate(
-                """() => {
+                """(selector) => {
                   const visible = (el) => {
                     const s = getComputedStyle(el);
                     const r = el.getBoundingClientRect();
                     return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 1 && r.height > 1;
                   };
-                  const root = Array.from(document.querySelectorAll('.active, .present, section.slide, section'))
-                    .find(visible) || document.body;
+                  const active = document.querySelector('[data-verify-active="true"]');
+                  const root = (active && visible(active))
+                    ? active
+                    : (Array.from(document.querySelectorAll('.active, .present, [data-slide], .slide, section'))
+                        .find(visible) || document.body);
                   const roleFor = (el) => {
                     const tag = el.tagName.toLowerCase();
                     const cls = String(el.className || '').toLowerCase();
@@ -186,10 +248,28 @@ async def playwright_check(html: Path, out_dir: Path, width: int, height: int, m
                   const bulletCount = items.filter(item => item.tag === 'li').length;
                   const figureCount = items.filter(item => item.role === 'figure').length;
                   return {items, brokenImages, textChars, bulletCount, figureCount};
-                }"""
+                }""",
+                selector,
             )
             warnings = []
+            screenshot_bytes = shot.stat().st_size if shot.exists() else 0
             items = data["items"]
+            if not items:
+                warnings.append(
+                    {
+                        "rule": "verification-incomplete",
+                        "message": "No visible text/image/table items were detected in the active slide DOM. Screenshot exists, but DOM overlap checks did not run for this slide.",
+                        "screenshot_bytes": screenshot_bytes,
+                    }
+                )
+            if screenshot_bytes < 10_000:
+                warnings.append(
+                    {
+                        "rule": "screenshot-may-be-blank",
+                        "message": "Screenshot file is very small; manually inspect whether the slide rendered correctly.",
+                        "screenshot_bytes": screenshot_bytes,
+                    }
+                )
             title_items = [i for i in items if i.get("role") == "title"]
             footer_items = [i for i in items if i.get("role") == "footer"]
             content_items = [i for i in items if i.get("role") in ("content", "figure", "caption")]
@@ -248,6 +328,7 @@ async def playwright_check(html: Path, out_dir: Path, width: int, height: int, m
                     "text_chars": data["textChars"],
                     "bullet_count": data["bulletCount"],
                     "figure_count": data["figureCount"],
+                    "screenshot_bytes": screenshot_bytes,
                 }
             )
         await browser.close()
@@ -290,6 +371,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--width", type=int, default=1600)
     parser.add_argument("--height", type=int, default=900)
     parser.add_argument("--max-slides", type=int)
+    parser.add_argument("--generic-mode", action="store_true", help="Prefer [data-slide]/.slide enumeration for custom HTML decks.")
     args = parser.parse_args(argv)
 
     html = Path(args.html).resolve()
@@ -298,7 +380,7 @@ def main(argv: list[str]) -> int:
         import asyncio
         import playwright  # type: ignore  # noqa: F401
 
-        report = asyncio.run(playwright_check(html, out_dir, args.width, args.height, args.max_slides))
+        report = asyncio.run(playwright_check(html, out_dir, args.width, args.height, args.max_slides, args.generic_mode))
     except Exception as exc:
         report = screenshot_fallback(html, out_dir, args.width, args.height, args.browser)
         report.setdefault("warnings", []).append(f"Playwright unavailable or failed: {exc}")

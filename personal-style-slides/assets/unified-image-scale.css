@@ -1,0 +1,47 @@
+/*
+  Personal Style Slides - unified image scale
+
+  These variables keep figure sizing consistent across a deck. Override the
+  values for a user's personal template, but keep the variables and role classes.
+*/
+
+:root {
+  --img-full: min(58vh, 520px);
+  --img-half: min(42vh, 380px);
+  --img-third: min(30vh, 270px);
+  --img-thumb: min(22vh, 190px);
+}
+
+.figure-full img,
+.pss-figure-full img {
+  max-height: var(--img-full);
+}
+
+.figure-half img,
+.pss-figure-half img {
+  max-height: var(--img-half);
+}
+
+.figure-third img,
+.pss-figure-third img {
+  max-height: var(--img-third);
+}
+
+.figure-thumb img,
+.pss-figure-thumb img {
+  max-height: var(--img-thumb);
+}
+
+.figure-full img,
+.figure-half img,
+.figure-third img,
+.figure-thumb img,
+.pss-figure-full img,
+.pss-figure-half img,
+.pss-figure-third img,
+.pss-figure-thumb img {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

@@ -1,0 +1,52 @@
+/*
+  Personal Style Slides - unified type scale
+
+  Use this as the default type system for generated decks. Treat these variables
+  as a stable baseline, not a fixed aesthetic. A user's approved template or
+  long-term style memory may override the values, but generated decks should
+  keep the same role names so checks can reason about typography consistently.
+*/
+
+:root {
+  --ts-title: clamp(30px, 4.2vw, 40px);
+  --ts-subtitle: clamp(24px, 3vw, 30px);
+  --ts-body: clamp(20px, 2.2vw, 26px);
+  --ts-caption: clamp(15px, 1.5vw, 18px);
+  --ts-footnote: clamp(13px, 1.2vw, 15px);
+
+  --lh-title: 1.2;
+  --lh-body: 1.5;
+  --lh-caption: 1.35;
+}
+
+.slide-title,
+.pss-title {
+  font-size: var(--ts-title);
+  line-height: var(--lh-title);
+}
+
+.slide-subtitle,
+.pss-subtitle {
+  font-size: var(--ts-subtitle);
+  line-height: 1.28;
+}
+
+.slide-content,
+.pss-content {
+  font-size: var(--ts-body);
+  line-height: var(--lh-body);
+}
+
+.slide-caption,
+.pss-caption,
+figcaption {
+  font-size: var(--ts-caption);
+  line-height: var(--lh-caption);
+}
+
+.slide-footnote,
+.pss-footer,
+.slide-footer {
+  font-size: var(--ts-footnote);
+  line-height: 1.25;
+}
